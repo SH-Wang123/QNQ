@@ -1,0 +1,12 @@
+/window_handler/node_modules/
+/window_handler/node_modules
+/.idea/libraries/
+/.idea/jar*
+/window_handler/.idea/
+window_handler/QNQ_W.log
+window_handler/go.mod
+window_handler/go.sum
+window_handler/system_config
+window_handler/test/main.exe
+*.log
+window_handler/src/system_config
