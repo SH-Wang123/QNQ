@@ -33,7 +33,7 @@ func getFileTree(node *FileNode, data *map[string][]string) {
 
 func MarkFileTree(node *FileNode, rootPath string) {
 	currentPath := rootPath + node.AnchorPointPath
-	exist, _ := isExist(currentPath)
+	exist, _ := IsExist(currentPath)
 	if !exist {
 		if node.VarianceType == VARIANCE_ROOT {
 			node.VarianceType = VARIANCE_ROOT | VARIANCE_ADD

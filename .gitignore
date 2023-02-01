@@ -10,3 +10,4 @@ window_handler/system_config
 window_handler/test/main.exe
 *.log
 window_handler/src/system_config
+window_handler/src/window_handler.exe

@@ -27,7 +27,7 @@ func CloseFile(f *os.File) {
 	}
 }
 
-func isExist(path string) (bool, error) {
+func IsExist(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true, nil
@@ -39,7 +39,7 @@ func isExist(path string) (bool, error) {
 }
 
 func CreateDir(path string) {
-	exist, err := isExist(path)
+	exist, err := IsExist(path)
 	if err != nil {
 		log.Printf("get dir error : %v", err)
 	}

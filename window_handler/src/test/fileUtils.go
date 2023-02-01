@@ -2,13 +2,16 @@ package test
 
 import (
 	"fmt"
-	"log"
+	_ "log"
+	"math/rand"
 	"os"
+	"time"
+	"window_handler/worker"
 )
 
 // fileSize : KB
 func createFile(filePath string, fileSize int, randomContent bool) bool {
-	exist, err := isExist(filePath)
+	exist, err := worker.IsExist(filePath)
 	if exist {
 		return false
 	}
@@ -19,17 +22,17 @@ func createFile(filePath string, fileSize int, randomContent bool) bool {
 	}
 	defer f.Close()
 	content := make([]byte, 1024)
-	if randomContent {
-
-	}
 	for count := 1; count <= fileSize; count++ {
+		if randomContent {
+			content = randomPalindrome(1024)
+		}
 		f.Write(content)
 	}
 	return true
 }
 
 func createFileTree(startPath string, depth int, layerSize int, fileSize int, randomSize bool, randomContent bool, count *int) {
-	createDir(startPath)
+	worker.CreateDir(startPath)
 	if depth <= 0 {
 		return
 	}
@@ -45,32 +48,21 @@ func createFileTree(startPath string, depth int, layerSize int, fileSize int, ra
 	//create folder
 	for folderIndex := 1; folderIndex <= layerSize; folderIndex++ {
 		tempPath2 := startPath + filePrefix + fmt.Sprintf("%d", *count)
-		createDir(tempPath2)
+		worker.CreateDir(tempPath2)
 		createFileTree(tempPath2, depth-1, layerSize, fileSize, randomSize, randomContent, count)
 		*count++
 	}
 }
 
-func isExist(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
+// randomPalindrome size : byte
+func randomPalindrome(size int) []byte {
+	seed := time.Now().UnixNano()
+	rng := rand.New(rand.NewSource(seed))
+	bytes := make([]byte, size)
+	for i := 0; i < (size+1)/2; i++ {
+		r := byte(rng.Intn(0x1000)) //random rune up to '\u0999'
+		bytes[i] = r
+		bytes[size-1-i] = r
 	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
-}
-
-func createDir(path string) {
-	exist, err := isExist(path)
-	if err != nil {
-		log.Printf("get dir error : %v", err)
-	}
-	if !exist {
-		err = os.Mkdir(path, os.ModePerm)
-		if err != nil {
-			log.Printf("create dir error : %v", err)
-		}
-	}
+	return bytes
 }
