@@ -4,7 +4,6 @@ import (
 	"fmt"
 	_ "log"
 	"math/rand"
-	"os"
 	"time"
 	"window_handler/worker"
 )
@@ -16,7 +15,7 @@ func createFile(filePath string, fileSize int, randomContent bool) bool {
 		return false
 	}
 
-	f, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0777)
+	f, err := worker.OpenFile(filePath, true)
 	if err != nil {
 		return false
 	}

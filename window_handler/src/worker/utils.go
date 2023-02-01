@@ -1,6 +1,9 @@
 package worker
 
 import (
+	"crypto/md5"
+	"encoding/hex"
+	"io"
 	"log"
 	"os"
 )
@@ -52,15 +55,42 @@ func CreateDir(path string) {
 }
 
 func DeleteFile(path string) error {
-	err := os.Remove(path)
-	return err
+	exist, err := IsExist(path)
+	if err != nil {
+		log.Printf("get dir error : %v", err)
+	}
+	if exist {
+		err = os.Remove(path)
+		return err
+	}
+	return nil
 }
 
-func DeleteDIr(path string) error {
-	err := os.RemoveAll(path)
-	return err
+func DeleteDir(path string) error {
+	exist, err := IsExist(path)
+	if err != nil {
+		log.Printf("get dir error : %v", err)
+	}
+	if exist {
+		err = os.RemoveAll(path)
+		return err
+	}
+	return nil
 }
 
 func IsOpenDirError(err error, path string) bool {
 	return err.Error() == "open "+path+": is a directory"
+}
+
+func GetFileMd5(f *os.File) *string {
+	md5h := md5.New()
+	io.Copy(md5h, f)
+	md5Str := hex.EncodeToString(md5h.Sum(nil))
+	return &md5Str
+}
+
+func CompareMd5(sf *os.File, tf *os.File) bool {
+	sfMd5Ptr := GetFileMd5(sf)
+	tfMd5Ptr := GetFileMd5(tf)
+	return *sfMd5Ptr == *tfMd5Ptr
 }
