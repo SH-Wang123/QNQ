@@ -19,14 +19,14 @@ func InitFileNode(initAll bool, async bool) {
 		VarianceType:    VARIANCE_ROOT,
 	}
 	if async {
-		go GetFilePath(LocalBSFileNode)
+		go GetFileTree(LocalBSFileNode)
 	} else {
-		GetFilePath(LocalBSFileNode)
+		GetFileTree(LocalBSFileNode)
 	}
 }
 
 // GetFilePath BFS
-func GetFilePath(fNode *FileNode) {
+func GetFileTree(fNode *FileNode) {
 	f, _ := OpenFile(fNode.AbstractPath, false)
 	allChild, err := f.Readdir(-1)
 	if err != nil {
@@ -46,7 +46,7 @@ func GetFilePath(fNode *FileNode) {
 			}
 			fNode.ChildrenNodeList = append(fNode.ChildrenNodeList, &childFileNode)
 			if child.IsDir() {
-				GetFilePath(&childFileNode)
+				GetFileTree(&childFileNode)
 			} else {
 				TotalFileNum++
 			}

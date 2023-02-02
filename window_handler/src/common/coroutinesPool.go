@@ -51,7 +51,12 @@ func (p *CoroutinesPool) Submit(executeFunc func(v ...interface{})) {
 	p.TaskChannel <- executeFunc
 }
 
+// TODO 并发问题
 func GetCoroutinesPool() *CoroutinesPool {
+	if globalCoroPool == nil {
+		InitCoroutinesPool()
+		globalCoroPool.StartPool()
+	}
 	return globalCoroPool
 }
 

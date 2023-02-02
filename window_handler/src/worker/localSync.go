@@ -8,6 +8,18 @@ import (
 	"window_handler/config"
 )
 
+var batchSyncErrorCache = make([][]string, 1)
+
+func NewLocalSingleWorker(sourceFile *os.File, targetFile *os.File) *common.QWorker {
+	return &common.QWorker{
+		Sub:             nil,
+		ExecuteFunc:     LocalSyncSingleFile,
+		DeconstructFunc: closeFile,
+		PrivateFile:     sourceFile,
+		TargetFile:      targetFile,
+	}
+}
+
 func FileNode2TreeMap(data *map[string][]string) {
 	datat := *data
 	datat[""] = append(datat[""], LocalBSFileNode.AbstractPath)
@@ -52,7 +64,8 @@ func MarkFileTree(node *FileNode, rootPath string) {
 }
 
 // SyncBatchFileTree Crete folder
-func SyncBatchFileTree(node FileNode, startPath string) {
+func SyncBatchFileTree(node *FileNode, startPath string) {
+	CreateDir(startPath)
 	for _, child := range node.ChildrenNodeList {
 		absPath := startPath + fileSeparator + child.AnchorPointPath
 		if !child.IsDirectory {
@@ -69,12 +82,12 @@ func SyncBatchFileTree(node FileNode, startPath string) {
 			}
 		} else {
 			CreateDir(absPath)
-			SyncBatchFileTree(*child, absPath)
+			SyncBatchFileTree(child, absPath)
 		}
 	}
 }
 
-func LocalSyncSingleFile() bool {
+func LocalSyncSingleFileGUI() bool {
 	tempTarget := ""
 
 	sf, err := OpenFile(config.SystemConfigCache.Value().LocalSingleSync.SourcePath, false)
@@ -103,20 +116,8 @@ func LocalSyncSingleFile() bool {
 	return true
 }
 
-func NewLocalSingleWorker(sourceFile *os.File, targetFile *os.File) *common.QWorker {
-	return &common.QWorker{
-		Sub:             nil,
-		ExecuteFunc:     RemoteSyncSingleFile,
-		DeconstructFunc: closeFile,
-		PrivateFile:     sourceFile,
-		TargetFile:      targetFile,
-	}
-}
-
-func RemoteSyncSingleFile(msg interface{}, q *common.QWorker) {
+func LocalSyncSingleFile(msg interface{}, q *common.QWorker) {
 	buf := make([]byte, 4096)
-	defer CloseFile(q.TargetFile)
-	defer CloseFile(q.PrivateFile)
 	for {
 		n, err := q.PrivateFile.Read(buf)
 		if err != nil && err != io.EOF {
@@ -135,7 +136,8 @@ func RemoteSyncSingleFile(msg interface{}, q *common.QWorker) {
 }
 
 func closeFile(w *common.QWorker) {
-
+	CloseFile(w.TargetFile)
+	CloseFile(w.PrivateFile)
 }
 
 func singleFileDone() {
@@ -145,4 +147,12 @@ func singleFileDone() {
 
 func GetLocalBatchProgress() float64 {
 	return DoneFileNum / TotalFileNum
+}
+
+func GetBatchSyncError() string {
+	return ""
+}
+
+func AddBatchSyncError(key string, value string) {
+
 }

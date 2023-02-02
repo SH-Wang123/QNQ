@@ -12,9 +12,14 @@ func TestCreateFile(t *testing.T) {
 
 func TestCreateFileTree(t *testing.T) {
 	count := 0
-	createFileTree("E:/source/tree_ttt", 5, 5, 8, false, true, &count)
+	pre := "/8KB_"
+	createFileTree(&pre, "E:/source/tree_ttt", 5, 5, 8, false, true, &count)
 }
 
 func TestRandomContent(t *testing.T) {
 	t.Logf("Random result : %s", randomPalindrome(1024))
+}
+
+func TestCompareMd5(t *testing.T) {
+
 }

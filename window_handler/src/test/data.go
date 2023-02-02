@@ -1,3 +1,5 @@
 package test
 
-var utPath = "../ut_temp/"
+var utRoot = "../ut_temp"
+var sourceRoot = "/source"
+var targetRoot = "/target"

@@ -106,7 +106,7 @@ func getStartLocalBatchButton() *widget.Button {
 		ProgressBar = getTaskProgressBar()
 		progressBox.Add(ProgressBar)
 		//TODO 优化协程池
-		go worker.SyncBatchFileTree(*worker.LocalBSFileNode, config.SystemConfigCache.Value().LocalBatchSync.TargetPath)
+		go worker.SyncBatchFileTree(worker.LocalBSFileNode, config.SystemConfigCache.Value().LocalBatchSync.TargetPath)
 
 	})
 	return button
@@ -114,7 +114,7 @@ func getStartLocalBatchButton() *widget.Button {
 
 func getStartLocalSingleButton() *widget.Button {
 	button := widget.NewButton("Start", func() {
-		go worker.LocalSyncSingleFile()
+		go worker.LocalSyncSingleFileGUI()
 	})
 	return button
 }
