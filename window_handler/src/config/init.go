@@ -39,8 +39,6 @@ func loadDefaultConfig() {
 		},
 		VarianceAnalysis: varianceAnalysis{
 			TimeStamp: true,
-			FileSize:  true,
-			LastTime:  true,
 			Md5:       true,
 		},
 	}

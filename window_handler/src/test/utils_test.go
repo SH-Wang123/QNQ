@@ -1,7 +1,9 @@
 package test
 
 import (
+	"os"
 	"testing"
+	"window_handler/worker"
 )
 
 func TestCreateFile(t *testing.T) {
@@ -21,5 +23,8 @@ func TestRandomContent(t *testing.T) {
 }
 
 func TestCompareMd5(t *testing.T) {
-
+	sf, _ := os.Open("")
+	tf, _ := os.Open("")
+	t.Logf("%v", worker.CompareMd5(sf, tf))
+	worker.GetBatchSyncError()
 }

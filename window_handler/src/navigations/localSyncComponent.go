@@ -121,6 +121,7 @@ func getStartLocalSingleButton() *widget.Button {
 
 func getDiffAnalysisButton() *widget.Button {
 	button := widget.NewButton("Variance Analysis", func() {
+		worker.MarkFileTree(worker.LocalBSFileNode, config.SystemConfigCache.Value().LocalBatchSync.TargetPath)
 	})
 	return button
 }

@@ -8,13 +8,13 @@ import (
 	"window_handler/config"
 )
 
-var batchSyncErrorCache = make([][]string, 1)
+var batchSyncErrorCache = make([]SyncFileError, 0)
 
 func NewLocalSingleWorker(sourceFile *os.File, targetFile *os.File) *common.QWorker {
 	return &common.QWorker{
 		Sub:             nil,
 		ExecuteFunc:     LocalSyncSingleFile,
-		DeconstructFunc: closeFile,
+		DeconstructFunc: closeAndCheckFile,
 		PrivateFile:     sourceFile,
 		TargetFile:      targetFile,
 	}
@@ -44,17 +44,35 @@ func getFileTree(node *FileNode, data *map[string][]string) {
 }
 
 func MarkFileTree(node *FileNode, rootPath string) {
-	currentPath := rootPath + node.AnchorPointPath
-	exist, _ := IsExist(currentPath)
-	if !exist {
+	targetPath := rootPath + node.AnchorPointPath
+	targetExist, _ := IsExist(targetPath)
+	sourceExist, _ := IsExist(node.AbstractPath)
+	if !targetExist && sourceExist {
 		if node.VarianceType == VARIANCE_ROOT {
 			node.VarianceType = VARIANCE_ROOT | VARIANCE_ADD
 		} else {
 			node.VarianceType = VARIANCE_ADD
 		}
-	} else {
-		//TODO check md5,timestamp,lastTime
 	}
+
+	//if targetExist && sourceExist
+
+	if targetExist && sourceExist {
+		//TODO check md5,timestamp
+		sf, _ := OpenFile(node.AbstractPath, false)
+		defer CloseFile(sf)
+		tf, _ := OpenFile(targetPath, false)
+		defer CloseFile(tf)
+		//Check md5
+		if config.SystemConfigCache.Value().VarianceAnalysis.Md5 && !CompareMd5(sf, tf) {
+			node.VarianceType = VARIANCE_EDIT
+		}
+		//Check timestamp
+		if config.SystemConfigCache.Value().VarianceAnalysis.TimeStamp && !CompareModifyTime(sf, tf) {
+			node.VarianceType = VARIANCE_EDIT
+		}
+	}
+
 	if node.IsDirectory {
 		for _, child := range node.ChildrenNodeList {
 			MarkFileTree(child, rootPath+child.AnchorPointPath)
@@ -135,7 +153,10 @@ func LocalSyncSingleFile(msg interface{}, q *common.QWorker) {
 	defer singleFileDone()
 }
 
-func closeFile(w *common.QWorker) {
+func closeAndCheckFile(w *common.QWorker) {
+	if !CompareMd5(w.PrivateFile, w.TargetFile) {
+		AddBatchSyncError(w.PrivateFile.Name(), md5CheckError)
+	}
 	CloseFile(w.TargetFile)
 	CloseFile(w.PrivateFile)
 }
@@ -149,10 +170,17 @@ func GetLocalBatchProgress() float64 {
 	return DoneFileNum / TotalFileNum
 }
 
-func GetBatchSyncError() string {
-	return ""
+func GetBatchSyncError() []SyncFileError {
+	defer func() {
+		batchSyncErrorCache = make([]SyncFileError, 0)
+	}()
+	return batchSyncErrorCache
 }
 
-func AddBatchSyncError(key string, value string) {
-
+func AddBatchSyncError(absPath string, reason string) {
+	node := SyncFileError{
+		AbsPath: absPath,
+		Reason:  reason,
+	}
+	batchSyncErrorCache = append(batchSyncErrorCache, node)
 }

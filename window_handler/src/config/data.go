@@ -26,8 +26,6 @@ type localSync struct {
 
 type varianceAnalysis struct {
 	TimeStamp bool `json:"time_stamp"`
-	FileSize  bool `json:"file_size"`
-	LastTime  bool `json:"last_time"`
 	Md5       bool `json:"md5"`
 }
 

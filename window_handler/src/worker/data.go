@@ -3,6 +3,10 @@ package worker
 const dataMsgPreFix = "00"
 
 const (
+	md5CheckError = "File sync error. Md5 is different"
+)
+
+const (
 	VARIANCE_ROOT = iota
 	VARIANCE_ADD
 	VARIANCE_EDIT
@@ -19,6 +23,11 @@ type FileNode struct {
 	ChildrenNodeList []*FileNode
 	HeadFileNode     *FileNode
 	VarianceType     int
+}
+
+type SyncFileError struct {
+	AbsPath string
+	Reason  string
 }
 
 // LocalBSFileNode /** Local batch source file node

@@ -7,6 +7,7 @@ import (
 )
 
 var batchFileSyncUT = "/batch_file_sync_ut"
+var batchFileSyncUTLog = "[local single sync ut]: "
 
 var localBatchSyncCase = []struct {
 	startPath     string
@@ -52,7 +53,16 @@ func TestLocalBatchSyncCase(t *testing.T) {
 		}
 		worker.GetFileTree(startNode)
 		worker.SyncBatchFileTree(startNode, targetPath+testCase.startPath)
-		t.Logf("[local single sync ut]: case {%v} ok!!!", testCase.prefixName)
+		errorInfo := worker.GetBatchSyncError()
+		if len(errorInfo) == 0 {
+			t.Logf(batchFileSyncUTLog+"case {%v} ok!!!", testCase.prefixName)
+		} else {
+			t.Logf(batchFileSyncUTLog+"case {%v} error!!!", testCase.prefixName)
+			for info := range errorInfo {
+				t.Errorf(batchFileSyncUTLog+" %v", info)
+			}
+		}
+
 	}
 }
 

@@ -94,3 +94,17 @@ func CompareMd5(sf *os.File, tf *os.File) bool {
 	tfMd5Ptr := GetFileMd5(tf)
 	return *sfMd5Ptr == *tfMd5Ptr
 }
+
+func CompareModifyTime(sf *os.File, tf *os.File) bool {
+	sfInfo, err := sf.Stat()
+	if err != nil {
+		log.Printf("get file stat error : %v", err)
+		return false
+	}
+	tfInfo, err := tf.Stat()
+	if err != nil {
+		log.Printf("get file stat error : %v", err)
+		return false
+	}
+	return sfInfo.ModTime() == tfInfo.ModTime()
+}
