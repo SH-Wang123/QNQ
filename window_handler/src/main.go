@@ -20,8 +20,6 @@ const preferenceCurrentNavigation = "currentNavigation"
 
 var topWindow fyne.Window
 
-const version = " V0.0.2.2"
-
 func main() {
 	os.Setenv("FYNE_FONT", "msyh.ttc")
 	Qlog.MakeLogger()
@@ -48,7 +46,7 @@ func main() {
 func startGUI() {
 	a := app.NewWithID("qnq.window_handler")
 	a.SetIcon(theme.FyneLogo())
-	w := a.NewWindow("QNQ Sync" + version)
+	w := a.NewWindow("QNQ Sync" + config.SystemConfigCache.Value().Version)
 	topWindow = w
 	w.SetMaster()
 

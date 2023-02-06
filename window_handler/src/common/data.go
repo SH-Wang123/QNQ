@@ -49,6 +49,10 @@ type QWorker struct {
 	PrivateNet      os.File
 }
 
+func (w *QWorker) Deconstruct() {
+	w.DeconstructFunc(w)
+}
+
 type QSender struct {
 	SN                 string
 	Active             bool
@@ -57,8 +61,8 @@ type QSender struct {
 	PrivateVariableMap map[string]interface{}
 }
 
-func (w *QWorker) Deconstruct() {
-	w.DeconstructFunc(w)
+func (s *QSender) GetExecuteFunc() func(s *QSender) {
+	return s.ExecuteFunc
 }
 
 // ------------------------------ Observer

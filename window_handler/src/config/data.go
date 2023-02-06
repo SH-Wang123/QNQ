@@ -1,16 +1,18 @@
 package config
 
 import (
-	"runtime"
+	"time"
 	"window_handler/common"
 )
 
 const GET_INFO_FAILURE = "Getting information failure"
 const NOT_SET_TARGET = "Not set QNQ target"
+const version = "0.0.2.2"
 
 var SystemConfigCache cacheConfig
 
 type systemConfig struct {
+	Version          string           `json:"version"`
 	QnqTarget        qnqTarget        `json:"qnq_target"`
 	LocalSingleSync  localSync        `json:"local_single_sync"`
 	LocalBatchSync   localSync        `json:"local_batch_sync"`
@@ -18,10 +20,21 @@ type systemConfig struct {
 }
 
 type localSync struct {
-	SourcePath string `json:"source_path"`
-	TargetPath string `json:"target_path"`
-	Speed      string `json:"speed"`
-	CheckMd5   bool   `json:"check_md5"`
+	SourcePath   string             `json:"source_path"`
+	TargetPath   string             `json:"target_path"`
+	PeriodicSync PeriodicSyncPolicy `json:"periodic_policy"`
+	TimingSync   TimingSyncPolicy   `json:"timing_sync"`
+	Speed        string             `json:"speed"`
+	CheckMd5     bool               `json:"check_md5"`
+}
+
+type PeriodicSyncPolicy struct {
+	Cycle  time.Duration `json:"sync_cycle"`
+	Rate   int           `json:"sync_rate"`
+	Enable bool          `json:"enable"`
+}
+
+type TimingSyncPolicy struct {
 }
 
 type varianceAnalysis struct {
@@ -38,18 +51,6 @@ type systemInfo struct {
 	OS              string
 	SystemFramework string
 	MachineName     string
-}
-
-var LocalSystemInfo = systemInfo{
-	OS:              runtime.GOOS,
-	SystemFramework: runtime.GOARCH,
-	MachineName:     getLocalMachineName(),
-}
-
-var TargetSystemInfo = systemInfo{
-	OS:              GET_INFO_FAILURE,
-	SystemFramework: GET_INFO_FAILURE,
-	MachineName:     GET_INFO_FAILURE,
 }
 
 // CacheConfig Subject Object

@@ -1,6 +1,22 @@
 package config
 
-import "os"
+import (
+	"os"
+	"runtime"
+	"time"
+)
+
+var LocalSystemInfo = systemInfo{
+	OS:              runtime.GOOS,
+	SystemFramework: runtime.GOARCH,
+	MachineName:     getLocalMachineName(),
+}
+
+var TargetSystemInfo = systemInfo{
+	OS:              GET_INFO_FAILURE,
+	SystemFramework: GET_INFO_FAILURE,
+	MachineName:     GET_INFO_FAILURE,
+}
 
 func InitConfig() {
 	loadInitConfigCache()
@@ -21,6 +37,7 @@ func InitConfig() {
 // TODO 配置新增后的版本升级处理
 func loadDefaultConfig() {
 	defaultConfig := systemConfig{
+		Version: version,
 		QnqTarget: qnqTarget{
 			Ip:        "0.0.0.0",
 			LocalPath: "Not Set",
@@ -34,6 +51,12 @@ func loadDefaultConfig() {
 		LocalBatchSync: localSync{
 			SourcePath: "Not Set",
 			TargetPath: "Not Set",
+			PeriodicSync: PeriodicSyncPolicy{
+				Cycle:  time.Hour,
+				Rate:   1,
+				Enable: false,
+			},
+			TimingSync: TimingSyncPolicy{},
 			Speed:      "Not Set",
 			CheckMd5:   false,
 		},

@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 	"window_handler/common"
 	"window_handler/config"
 )
@@ -58,7 +59,6 @@ func MarkFileTree(node *FileNode, rootPath string) {
 	//if targetExist && sourceExist
 
 	if targetExist && sourceExist {
-		//TODO check md5,timestamp
 		sf, _ := OpenFile(node.AbstractPath, false)
 		defer CloseFile(sf)
 		tf, _ := OpenFile(targetPath, false)
@@ -101,6 +101,21 @@ func SyncBatchFileTree(node *FileNode, startPath string) {
 		} else {
 			CreateDir(absPath)
 			SyncBatchFileTree(child, absPath)
+		}
+	}
+}
+
+func PeriodicLocalBatchSync(node *FileNode, startPath string, duration time.Duration, notEnd *bool) {
+	ticker := time.NewTicker(duration)
+	for {
+		select {
+		case <-ticker.C:
+			if config.SystemConfigCache.Value().LocalBatchSync.PeriodicSync.Enable || *notEnd {
+				InitFileNode(true, false)
+				SyncBatchFileTree(node, startPath)
+			} else {
+				return
+			}
 		}
 	}
 }
