@@ -2,9 +2,12 @@ package navigations
 
 import (
 	"fyne.io/fyne/v2"
+	"time"
 )
 
 const isDev = true
+
+var timeCycleMap = make(map[string]time.Duration)
 
 type Navigation struct {
 	Title, Intro string
@@ -79,3 +82,9 @@ var (
 		"remoteSync": {"remoteSingleSync"},
 	}
 )
+
+func initTimeCycle() {
+	timeCycleMap["Second"] = time.Second
+	timeCycleMap["Minute"] = time.Minute
+	timeCycleMap["Hour"] = time.Hour
+}

@@ -108,3 +108,14 @@ func CompareModifyTime(sf *os.File, tf *os.File) bool {
 	}
 	return sfInfo.ModTime() == tfInfo.ModTime()
 }
+
+func GetSingleFileNode(path string) *FileNode {
+	return &FileNode{
+		IsDirectory:     false,
+		HasChildren:     false,
+		AbstractPath:    path,
+		AnchorPointPath: "",
+		HeadFileNode:    nil,
+		VarianceType:    VARIANCE_ROOT,
+	}
+}

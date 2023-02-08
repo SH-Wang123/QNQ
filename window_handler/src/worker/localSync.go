@@ -10,6 +10,8 @@ import (
 )
 
 var batchSyncErrorCache = make([]SyncFileError, 0)
+var BatchSyncPolicyRunFlag = false
+var SingleSyncPolicyRunFlag = false
 
 func NewLocalSingleWorker(sourceFile *os.File, targetFile *os.File) *common.QWorker {
 	return &common.QWorker{
@@ -106,13 +108,58 @@ func SyncBatchFileTree(node *FileNode, startPath string) {
 }
 
 func PeriodicLocalBatchSync(node *FileNode, startPath string, duration time.Duration, notEnd *bool) {
+	if BatchSyncPolicyRunFlag {
+		return
+	}
+	BatchSyncPolicyRunFlag = true
+	defer func() {
+		BatchSyncPolicyRunFlag = false
+	}()
 	ticker := time.NewTicker(duration)
+
 	for {
 		select {
 		case <-ticker.C:
 			if config.SystemConfigCache.Value().LocalBatchSync.PeriodicSync.Enable || *notEnd {
+				common.SetLBSPRunning()
 				InitFileNode(true, false)
+				DoneFileNum = 0.0
+				TotalFileNum = 0.0
 				SyncBatchFileTree(node, startPath)
+				common.SetLBSPStop()
+			} else {
+				return
+			}
+		}
+	}
+}
+
+func StartPeriodicSync(node *FileNode, startPath string, duration time.Duration, notEnd *bool, isBatch bool) {
+	if isBatch {
+		go PeriodicLocalBatchSync(node, startPath, duration, notEnd)
+	} else {
+		go PeriodicLocalSingleSync(node, startPath, duration, notEnd)
+	}
+}
+
+func PeriodicLocalSingleSync(node *FileNode, startPath string, duration time.Duration, notEnd *bool) {
+	if SingleSyncPolicyRunFlag {
+		return
+	}
+	SingleSyncPolicyRunFlag = true
+	defer func() {
+		SingleSyncPolicyRunFlag = false
+	}()
+	ticker := time.NewTicker(duration)
+
+	for {
+		select {
+		case <-ticker.C:
+			if config.SystemConfigCache.Value().LocalBatchSync.PeriodicSync.Enable || *notEnd {
+				sf, _ := OpenFile(node.AbstractPath, false)
+				tf := getSingleTargetFile(sf, startPath)
+				worker := NewLocalSingleWorker(sf, tf)
+				common.GetCoroutinesPool().Submit(worker.Execute)
 			} else {
 				return
 			}
@@ -121,13 +168,20 @@ func PeriodicLocalBatchSync(node *FileNode, startPath string, duration time.Dura
 }
 
 func LocalSyncSingleFileGUI() bool {
-	tempTarget := ""
-
 	sf, err := OpenFile(config.SystemConfigCache.Value().LocalSingleSync.SourcePath, false)
 	if err != nil {
 		return false
 	}
+	tf := getSingleTargetFile(sf, config.SystemConfigCache.Value().LocalSingleSync.TargetPath)
 
+	worker := NewLocalSingleWorker(sf, tf)
+	common.GetCoroutinesPool().Submit(worker.Execute)
+
+	return true
+}
+
+func getSingleTargetFile(sf *os.File, targetPath string) *os.File {
+	tempTarget := ""
 	tf, err := OpenFile(config.SystemConfigCache.Value().LocalSingleSync.TargetPath, true)
 
 	if err != nil {
@@ -136,17 +190,13 @@ func LocalSyncSingleFileGUI() bool {
 			tempTarget = config.SystemConfigCache.Value().LocalSingleSync.TargetPath + "/" + sfInfo.Name()
 			tf, err = OpenFile(tempTarget, true)
 			if err != nil {
-				return false
+				return tf
 			}
 		} else {
-			return false
+			return nil
 		}
 	}
-
-	worker := NewLocalSingleWorker(sf, tf)
-	common.GetCoroutinesPool().Submit(worker.Execute)
-
-	return true
+	return tf
 }
 
 func LocalSyncSingleFile(msg interface{}, q *common.QWorker) {

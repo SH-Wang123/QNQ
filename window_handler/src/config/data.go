@@ -82,5 +82,13 @@ func (a *cacheConfig) Set(s systemConfig) {
 	a.NotifyAll()
 }
 
+func (a *cacheConfig) GetLocalPeriodicSyncPolicy(isBatch bool) *localSync {
+	if isBatch {
+		return &a.Cache.LocalBatchSync
+	} else {
+		return &a.Cache.LocalSingleSync
+	}
+}
+
 type LocalConfig struct {
 }

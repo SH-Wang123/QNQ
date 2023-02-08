@@ -77,8 +77,8 @@ func StartQClient() {
 		log.Printf(err.Error())
 	} else {
 		log.Printf("client %v connected \n", ConnectClient.RemoteAddr())
-		_, err = WriteStrToQTarget("test")
-		if err == nil {
+		ret, err := WriteStrToQTarget("test")
+		if err == nil && ret != "" {
 			ConnectStauts = true
 			go handleConnect(ConnectClient, true)
 			log.Printf("client start ...")

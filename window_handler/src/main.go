@@ -44,6 +44,7 @@ func main() {
 }
 
 func startGUI() {
+	navigations.I18n()
 	a := app.NewWithID("qnq.window_handler")
 	a.SetIcon(theme.FyneLogo())
 	w := a.NewWindow("QNQ Sync" + config.SystemConfigCache.Value().Version)
