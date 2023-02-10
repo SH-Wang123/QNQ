@@ -53,10 +53,6 @@ func makeOpenFolderBtn(buttonName string, win fyne.Window, bindPath binding.Stri
 				dialog.ShowError(err, win)
 				return
 			}
-			if uri == nil {
-				log.Println("Cancelled")
-				return
-			}
 			_, err = uri.List()
 			if err != nil {
 				dialog.ShowError(err, win)

@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"log"
 	"strconv"
 	"sync"
 	"time"
@@ -31,6 +32,7 @@ var (
 
 var (
 	localBatchSyncComponent fyne.CanvasObject
+	localBatchStartButton   *widget.Button
 	blcOnce                 sync.Once
 )
 
@@ -119,7 +121,7 @@ func GetBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 		lbspPro := widget.NewProgressBarInfinite()
 		localBatchPolicySyncBar = container.NewVBox(lbspPro)
 
-		startButton := getStartLocalBatchButton()
+		localBatchStartButton = getStartLocalBatchButton()
 
 		differecnButton := getDiffAnalysisButton()
 		progressBox = container.NewVBox()
@@ -132,7 +134,7 @@ func GetBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 				targetComponent,
 				syncPolicyRunningStatusComp,
 			),
-			startButton,
+			localBatchStartButton,
 			differecnButton,
 			localBatchSyncPolicyComponent,
 			progressBox,
@@ -184,6 +186,7 @@ func getDiffAnalysisButton() *widget.Button {
 }
 
 func getTaskProgressBar() *fyne.Container {
+	localBatchStartButton.Disable()
 	progress := widget.NewProgressBar()
 	go func() {
 		var progressNum = 0.0
@@ -191,10 +194,14 @@ func getTaskProgressBar() *fyne.Container {
 			time.Sleep(time.Millisecond * 500)
 			progressNum = worker.GetLocalBatchProgress()
 			progress.SetValue(progressNum)
+			err := worker.GetBatchSyncError()
+			if len(err) != 0 {
+				log.Println()
+			}
 		}
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 1)
 		progressBox.Remove(progressBar)
-
+		localBatchStartButton.Enable()
 	}()
 	return container.NewVBox(progress)
 }

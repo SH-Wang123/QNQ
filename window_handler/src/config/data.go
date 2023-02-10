@@ -35,6 +35,8 @@ type PeriodicSyncPolicy struct {
 }
 
 type TimingSyncPolicy struct {
+	Day  int       `json:"sync_day"`
+	Time time.Time `json:"sync_time"`
 }
 
 type varianceAnalysis struct {
