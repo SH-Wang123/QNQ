@@ -18,7 +18,7 @@ var TargetSystemInfo = systemInfo{
 	MachineName:     GET_INFO_FAILURE,
 }
 
-func InitConfig() {
+func init() {
 	loadInitConfigCache()
 	_, err := os.Open(CONFOG_PATH)
 	if err != nil {

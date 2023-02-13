@@ -7,3 +7,6 @@ need 64bit gcc
 
 ## Build
 go build -ldflags -H=windowsgui main.go
+$Env:GOOS = "linux"
+$Env:GOARCH = "arm64"
+go build

@@ -7,12 +7,14 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"net"
+	"net/url"
 	"os"
 	"window_handler/Qlog"
 	"window_handler/common"
 	"window_handler/config"
 	"window_handler/navigations"
 	"window_handler/network"
+	"window_handler/request"
 	"window_handler/worker"
 )
 
@@ -23,7 +25,6 @@ var topWindow fyne.Window
 func main() {
 	os.Setenv("FYNE_FONT", "msyh.ttc")
 	Qlog.MakeLogger()
-	config.InitConfig()
 	common.InitCoroutinesPool()
 	worker.LoadWorkerFactory()
 	go network.StartQServer()
@@ -44,10 +45,9 @@ func main() {
 }
 
 func startGUI() {
-	navigations.I18n()
 	a := app.NewWithID("qnq.window_handler")
 	a.SetIcon(theme.FyneLogo())
-	w := a.NewWindow("QNQ Sync" + config.SystemConfigCache.Value().Version)
+	w := a.NewWindow("QNQ Sync " + config.SystemConfigCache.Value().Version)
 	topWindow = w
 	w.SetMaster()
 
@@ -84,6 +84,7 @@ func startGUI() {
 		w.SetContent(split)
 	}
 	w.Resize(fyne.NewSize(400, 600))
+
 	w.ShowAndRun()
 }
 
@@ -142,8 +143,20 @@ func makeNav(setNavigation func(navigation navigations.Navigation), loadPrevious
 			a.Settings().SetTheme(theme.LightTheme())
 		}),
 	)
+	lastVersion := request.GetLastVersion()
+	if lastVersion == "" || lastVersion == config.SystemConfigCache.Value().Version {
+		lastVersion = "Project Link"
+	} else {
+		lastVersion = "Lastest version is  " + lastVersion
+	}
+	projectUrl, _ := url.Parse("https://github.com/wangshenghao1/QNQ")
+	versionInfo := widget.NewHyperlink(lastVersion, projectUrl)
+	flootBox := container.NewVBox(
+		versionInfo,
+		themes,
+	)
 
-	return container.NewBorder(nil, themes, nil, nil, tree)
+	return container.NewBorder(nil, flootBox, nil, nil, tree)
 }
 
 func unsupportedNavigation(t navigations.Navigation) bool {
