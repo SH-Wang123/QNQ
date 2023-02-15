@@ -7,7 +7,10 @@ import (
 
 func GetLastVersion() string {
 	rsp, _ := http.Get("http://114.132.74.122:6600/version")
-	defer rsp.Body.Close()
+	if rsp == nil {
+		return ""
+	}
+	defer CloseRspBody(rsp.Body)
 	ret, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return ""

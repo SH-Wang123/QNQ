@@ -7,7 +7,7 @@ import (
 
 const GET_INFO_FAILURE = "Getting information failure"
 const NOT_SET_TARGET = "Not set QNQ target"
-const version = "V0.0.2.2"
+const version = "V0.0.3"
 
 var SystemConfigCache cacheConfig
 
