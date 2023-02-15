@@ -6,7 +6,11 @@ need 64bit gcc
 2. `go mod tidy`
 
 ## Build
-go build -ldflags -H=windowsgui main.go
+go install github.com/fyne-io/fyne-cross@latest
+go build -ldflags " -s -w -H=windowsgui" -o ./bin/QNQ_v0.0.3_linux_x86.exe main.go
 $Env:GOOS = "linux"
 $Env:GOARCH = "arm64"
-go build
+
+优化任务：
+1. 优化Worker，使得Worker可以装载任何任务
+2. 优化协程池，使得协程池可以执行任何任务，并且有扩容和阻塞功能

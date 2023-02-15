@@ -161,7 +161,7 @@ func PeriodicLocalSingleSync(node *FileNode, startPath string, duration time.Dur
 				worker := NewLocalSingleWorker(sf, tf)
 				common.GetCoroutinesPool().Submit(worker.Execute)
 			} else {
-				return
+				ticker.Stop()
 			}
 		}
 	}
