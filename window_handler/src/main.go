@@ -23,6 +23,7 @@ const preferenceCurrentNavigation = "currentNavigation"
 var topWindow fyne.Window
 
 func main() {
+	worker.GetPartitionsInfo()
 	os.Setenv("FYNE_FONT", "msyh.ttc")
 	Qlog.MakeLogger()
 	common.InitCoroutinesPool()
@@ -83,7 +84,7 @@ func startGUI() {
 		split.Offset = 0.2
 		w.SetContent(split)
 	}
-	w.Resize(fyne.NewSize(400, 600))
+	w.Resize(fyne.NewSize(config.WindowWidth, config.WindowHeight))
 
 	w.ShowAndRun()
 }

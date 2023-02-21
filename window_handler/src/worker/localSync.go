@@ -85,6 +85,9 @@ func MarkFileTree(node *FileNode, rootPath string) {
 
 // SyncBatchFileTree Crete folder
 func SyncBatchFileTree(node *FileNode, startPath string) {
+	if node.AbstractPath == config.NOT_SET_STR {
+		InitFileNode(true, false)
+	}
 	CreateDir(startPath)
 	for _, child := range node.ChildrenNodeList {
 		absPath := startPath + fileSeparator + child.AnchorPointPath

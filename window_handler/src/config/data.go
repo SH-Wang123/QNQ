@@ -6,8 +6,10 @@ import (
 )
 
 const GET_INFO_FAILURE = "Getting information failure"
-const NOT_SET_TARGET = "Not set QNQ target"
+const NOT_SET_STR = "Not Set"
 const version = "V0.0.3"
+const WindowHeight = 600
+const WindowWidth = 400
 
 var SystemConfigCache cacheConfig
 
@@ -22,6 +24,7 @@ type systemConfig struct {
 type localSync struct {
 	SourcePath   string             `json:"source_path"`
 	TargetPath   string             `json:"target_path"`
+	PolicySwitch bool               `json:"policy_switch"`
 	PeriodicSync PeriodicSyncPolicy `json:"periodic_policy"`
 	TimingSync   TimingSyncPolicy   `json:"timing_sync"`
 	Speed        string             `json:"speed"`
@@ -35,8 +38,9 @@ type PeriodicSyncPolicy struct {
 }
 
 type TimingSyncPolicy struct {
-	Day  int       `json:"sync_day"`
-	Time time.Time `json:"sync_time"`
+	Days   [7]bool   `json:"sync_days"`
+	Time   time.Time `json:"sync_time"`
+	Enable bool      `json:"enable"`
 }
 
 type varianceAnalysis struct {

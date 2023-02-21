@@ -92,3 +92,52 @@ func getBindString(value string) binding.String {
 	bindD.Set(value)
 	return bindD
 }
+
+func batchDisable(ds ...fyne.Disableable) {
+	for _, d := range ds {
+		d.Disable()
+	}
+}
+
+func batchEnable(ds ...fyne.Disableable) {
+	for _, d := range ds {
+		d.Enable()
+	}
+}
+
+func batchRefresh(bs ...fyne.CanvasObject) {
+	for _, v := range bs {
+		v.Refresh()
+	}
+}
+
+func clearDisableRootCache(key string) {
+	disableRootCache[key] = make(map[fyne.Disableable]disableRoot)
+}
+
+func addDisableRoot(key string, root fyne.Disableable, chidls ...fyne.Disableable) {
+	currentRoot := disableRoot{}
+	currentRoot.addChild(chidls...)
+	disableRootCache[key][root] = currentRoot
+}
+
+func disableAllChild(key string, root fyne.Disableable) {
+	cache := disableRootCache[key]
+	currentRoot := cache[root]
+	currentRoot.disableChild()
+	for _, v := range currentRoot.child {
+		disableAllChild(key, v)
+	}
+}
+
+func enableAllChild(key string, root fyne.Disableable) {
+	cache := disableRootCache[key]
+	currentRoot := cache[root]
+	currentRoot.enableChild()
+}
+
+// swapChecked activation check function
+func swapChecked(w *widget.Check) {
+	w.SetChecked(!w.Checked)
+	w.SetChecked(!w.Checked)
+}

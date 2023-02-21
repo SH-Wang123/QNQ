@@ -218,26 +218,27 @@ func getFileTree() fyne.CanvasObject {
 }
 
 func getBatchSyncPolicyBtn(win fyne.Window) *widget.Button {
-	lbspOnce.Do(func() {
-		localBatchSyncPolicyComponent = getSyncPolicyBtn(true, win)
-	})
-	return localBatchSyncPolicyComponent
+	return getSyncPolicyBtn(true, win)
 }
 
 func getSingleSyncPolicyBtn(win fyne.Window) *widget.Button {
-	lsspOnce.Do(func() {
-		localSingleSyncPolicyComponent = getSyncPolicyBtn(false, win)
-	})
-	return localSingleSyncPolicyComponent
+	return getSyncPolicyBtn(false, win)
 }
 
 func getSyncPolicyBtn(isBatchSync bool, win fyne.Window) *widget.Button {
 	return widget.NewButton("Sync Policy", func() {
 		var title string
 		var node *worker.FileNode
+		var daysCheckCompent [7]*widget.Check
+		var rateSelectedValue string
+		var disableCacheKey string
+		var usePeriodicSyncCheck *widget.Check
+		var useTimingSyncCheck *widget.Check
+		var policyEnableCheck *widget.Check
 		configCache := config.SystemConfigCache.GetLocalPeriodicSyncPolicy(isBatchSync)
 		rateList := make([]string, 0)
 		cycleList := make([]string, 0)
+
 		if isBatchSync {
 			title = "Local batch sync policy"
 			node = worker.LocalBSFileNode
@@ -245,40 +246,82 @@ func getSyncPolicyBtn(isBatchSync bool, win fyne.Window) *widget.Button {
 			title = "Local single sync policy"
 			node = worker.GetSingleFileNode(configCache.SourcePath)
 		}
+		disableCacheKey = title
+		clearDisableRootCache(disableCacheKey)
+		//Periodic sync
 		for i := 1; i <= 60; i++ {
 			rateList = append(rateList, fmt.Sprintf("%d", i))
 		}
 		rateSelect := widget.NewSelect(rateList, nil)
-		rateSelect.SetSelected(fmt.Sprintf("%d", configCache.PeriodicSync.Rate))
-		var cycleStr string
 		for k, v := range timeCycleMap {
 			cycleList = append(cycleList, k)
 			if v == configCache.PeriodicSync.Cycle {
-				cycleStr = k
+				rateSelectedValue = k
 			}
 		}
 		cycleSelect := widget.NewSelect(cycleList, nil)
-		cycleSelect.SetSelected(cycleStr)
 		rateAndCycleComponent := container.NewHBox(
 			rateSelect,
 			cycleSelect,
 		)
 
-		enableCheck := widget.NewCheck("Enable", nil)
-		enableCheck.Checked = configCache.PeriodicSync.Enable
+		//Timing sync
+		daysContainer := container.NewGridWithColumns(7)
+		for index := 0; index < len(daysCheckCompent); index++ {
+			daysCheckCompent[index] = widget.NewCheck(dayArrayList[index], nil)
+			daysContainer.Add(daysCheckCompent[index])
+		}
+
+		usePeriodicSyncCheck = widget.NewCheck("Used periodic sync", func(b bool) {
+			if b {
+				enableAllChild(disableCacheKey, usePeriodicSyncCheck)
+			} else {
+				disableAllChild(disableCacheKey, usePeriodicSyncCheck)
+			}
+		})
+		addDisableRoot(disableCacheKey, usePeriodicSyncCheck, rateSelect, cycleSelect)
+
+		useTimingSyncCheck = widget.NewCheck("Used timing sync", func(b bool) {
+			if b {
+				enableAllChild(disableCacheKey, useTimingSyncCheck)
+			} else {
+				disableAllChild(disableCacheKey, useTimingSyncCheck)
+			}
+		})
+		addDisableRoot(disableCacheKey, useTimingSyncCheck, daysCheckCompent[0], daysCheckCompent[1], daysCheckCompent[2], daysCheckCompent[3],
+			daysCheckCompent[4], daysCheckCompent[5], daysCheckCompent[6])
+
+		policyEnableCheck = widget.NewCheck("Global switch", func(b bool) {
+			swapChecked(usePeriodicSyncCheck)
+			swapChecked(useTimingSyncCheck)
+			if b {
+				enableAllChild(disableCacheKey, policyEnableCheck)
+			} else {
+				disableAllChild(disableCacheKey, policyEnableCheck)
+			}
+		})
+		addDisableRoot(disableCacheKey, policyEnableCheck, usePeriodicSyncCheck, useTimingSyncCheck)
 		items := []*widget.FormItem{
+			widget.NewFormItem("Select: ", useTimingSyncCheck),
+			widget.NewFormItem("Time:  ", daysContainer),
+			widget.NewFormItem("Select: ", usePeriodicSyncCheck),
 			widget.NewFormItem("Sync cycle: ", rateAndCycleComponent),
-			widget.NewFormItem("", enableCheck),
+			widget.NewFormItem("Select: ", policyEnableCheck),
 		}
 
 		dialog.ShowForm(title, "Save & Start", "Cancel", items, func(b bool) {
 			if b {
 				configCache.PeriodicSync.Rate, _ = strconv.Atoi(rateSelect.Selected)
 				configCache.PeriodicSync.Cycle = timeCycleMap[cycleSelect.Selected]
-				configCache.PeriodicSync.Enable = enableCheck.Checked
+				configCache.PeriodicSync.Enable = usePeriodicSyncCheck.Checked
+				configCache.TimingSync.Enable = useTimingSyncCheck.Checked
+				configCache.PolicySwitch = policyEnableCheck.Checked
+				for index := 0; index < len(daysCheckCompent); index++ {
+					configCache.TimingSync.Days[index] = daysCheckCompent[index].Checked
+				}
 				config.SystemConfigCache.NotifyAll()
 				tem := false
-				if configCache.PeriodicSync.Enable {
+				if configCache.PolicySwitch {
 					worker.StartPeriodicSync(node,
 						configCache.TargetPath,
 						time.Duration(configCache.PeriodicSync.Rate)*configCache.PeriodicSync.Cycle,
@@ -288,6 +331,29 @@ func getSyncPolicyBtn(isBatchSync bool, win fyne.Window) *widget.Button {
 				}
 			}
 		}, win)
+		//init value
+		cycleSelect.SetSelected(rateSelectedValue)
+		rateSelect.SetSelected(fmt.Sprintf("%d", configCache.PeriodicSync.Rate))
+
+		usePeriodicSyncCheck.Checked = configCache.PeriodicSync.Enable
+		useTimingSyncCheck.Checked = configCache.TimingSync.Enable
+		policyEnableCheck.Checked = configCache.PolicySwitch
+
+		if !configCache.PeriodicSync.Enable {
+			disableAllChild(disableCacheKey, usePeriodicSyncCheck)
+		}
+		if !configCache.TimingSync.Enable {
+			disableAllChild(disableCacheKey, useTimingSyncCheck)
+		}
+		if !policyEnableCheck.Checked {
+			disableAllChild(disableCacheKey, policyEnableCheck)
+		}
+
+		for index := 0; index < len(daysCheckCompent); index++ {
+			daysCheckCompent[index].SetChecked(configCache.TimingSync.Days[index])
+		}
+
+		batchRefresh(usePeriodicSyncCheck, useTimingSyncCheck, policyEnableCheck, cycleSelect, rateSelect)
 	})
 }
 
@@ -297,13 +363,10 @@ func watchLocalSyncPolicy() {
 		case c := <-common.GWChannel:
 			if c == common.LOCAL_BATCH_POLICY_RUNNING {
 				localBatchPolicySyncBox.Add(localBatchPolicySyncBar)
+				batchDisable(localBatchSyncPolicyComponent, localBatchStartButton)
 				localBatchSyncComponent.Refresh()
-				var progressNum = 0.0
-				for progressNum < 1 {
-					time.Sleep(time.Millisecond * 500)
-					progressNum = worker.GetLocalBatchProgress()
-				}
 			} else if c == common.LOCAL_BATCH_POLICY_STOP {
+				batchEnable(localBatchSyncPolicyComponent, localBatchStartButton)
 				localBatchPolicySyncBox.Remove(localBatchPolicySyncBar)
 			} else if c == common.LOCAL_SINGLE_POLICY_RUNNING {
 				localSinglePolicySyncBox.Add(localSinglePolicySyncBar)

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
 )
 
 func OpenFile(filePath string, createFile bool) (*os.File, error) {
@@ -118,4 +119,16 @@ func GetSingleFileNode(path string) *FileNode {
 		HeadFileNode:    nil,
 		VarianceType:    VARIANCE_ROOT,
 	}
+}
+
+func uint64ToString(i uint64) string {
+	return strconv.FormatUint(i, 10)
+}
+
+func stringToUint64(s string) (uint64, error) {
+	intNum, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, err
+	}
+	return uint64(intNum), nil
 }

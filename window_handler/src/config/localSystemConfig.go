@@ -41,5 +41,10 @@ func readConfig() systemConfig {
 }
 
 func loadConfig() {
-	SystemConfigCache.Set(readConfig())
+	config := readConfig()
+	if config.Version == "" {
+		loadDefaultConfig()
+	} else {
+		SystemConfigCache.Set(readConfig())
+	}
 }

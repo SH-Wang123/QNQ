@@ -36,6 +36,21 @@ var LocalBSFileNode *FileNode
 // LocalBTFileNode /** Local batch target file node
 var LocalBTFileNode *FileNode
 
+type Disk struct {
+	Name       string
+	Partitions []Partition
+	MediaType  int
+	Speed      uint64
+}
+
+type Partition struct {
+	Name        string
+	FsType      string
+	TotalSize   string
+	FreeSize    string
+	UsedPercent float64
+}
+
 func getFileSeparator() string {
 	//if strings.Contains(runtime.GOOS, "window") {
 	//	return "\\"
