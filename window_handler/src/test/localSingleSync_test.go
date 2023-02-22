@@ -10,14 +10,15 @@ var singleFileSyncUTRoot = "/single_file_sync_ut"
 
 var singleFileSyncCase = []struct {
 	fileName      string
-	fileSize      int
+	fileSize      worker.CapacityUnit
 	randomContent bool
+	bufferSize    worker.CapacityUnit
 }{
-	{"1KB", 1, true},
-	{"4KB", 4, true},
-	{"512KB", 512, true},
-	{"1024KB", 1024, true},
-	{"512MB", 1024 * 512, true},
+	{"1KB", 1 * worker.KB, true, 1 * worker.MB},
+	{"4KB", 4 * worker.KB, true, 1 * worker.MB},
+	{"512KB", 512 * worker.KB, true, 1 * worker.MB},
+	{"1024KB", 1 * worker.MB, true, 1 * worker.MB},
+	{"512MB", 512 * worker.MB, true, 1 * worker.MB},
 }
 
 func TestSingleSync(t *testing.T) {
@@ -27,7 +28,7 @@ func TestSingleSync(t *testing.T) {
 	var targetPath = utRoot + singleFileSyncUTRoot + targetRoot
 	for _, testCase := range singleFileSyncCase {
 		sfAbsPath, _ := filepath.Abs(sourcePath + "/" + testCase.fileName)
-		createFile(sfAbsPath, testCase.fileSize, testCase.randomContent)
+		worker.CreateFile(testCase.bufferSize, sfAbsPath, testCase.fileSize, testCase.randomContent)
 		sf, _ := worker.OpenFile(sfAbsPath, false)
 
 		tfAbsPath, _ := filepath.Abs(targetPath + "/" + testCase.fileName)

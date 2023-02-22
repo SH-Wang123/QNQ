@@ -9,7 +9,7 @@ const GET_INFO_FAILURE = "Getting information failure"
 const NOT_SET_STR = "Not Set"
 const version = "V0.0.3"
 const WindowHeight = 600
-const WindowWidth = 400
+const WindowWidth = 600
 
 var SystemConfigCache cacheConfig
 

@@ -5,8 +5,11 @@ import (
 	"encoding/hex"
 	"io"
 	"log"
+	"math/rand"
 	"os"
+	"regexp"
 	"strconv"
+	"time"
 )
 
 func OpenFile(filePath string, createFile bool) (*os.File, error) {
@@ -131,4 +134,55 @@ func stringToUint64(s string) (uint64, error) {
 		return 0, err
 	}
 	return uint64(intNum), nil
+}
+
+// fileSize : KB
+func CreateFile(bufferSize CapacityUnit, filePath string, fileSize CapacityUnit, randomContent bool) (success bool, usedTime int) {
+	exist, err := IsExist(filePath)
+	if exist {
+		return false, 0
+	}
+
+	f, err := OpenFile(filePath, true)
+	if err != nil {
+		return false, 0
+	}
+	defer f.Close()
+	content := make([]byte, bufferSize)
+	startTime := time.Now()
+	countSum := int(fileSize / bufferSize)
+	for count := 1; count <= countSum; count++ {
+		if randomContent {
+			content = randomPalindrome(bufferSize)
+		}
+		f.Write(content)
+	}
+	overTime := time.Now()
+	usedTime = int(overTime.Sub(startTime) / time.Second)
+	if usedTime == 0 {
+		usedTime++
+	}
+	return true, usedTime
+}
+
+// randomPalindrome size : byte
+func randomPalindrome(size CapacityUnit) []byte {
+	seed := time.Now().UnixNano()
+	rng := rand.New(rand.NewSource(seed))
+	bytes := make([]byte, size)
+	for i := 0; i < (int(size)+1)/2; i++ {
+		r := byte(rng.Intn(0x1000)) //random rune up to '\u0999'
+		bytes[i] = r
+		bytes[int(size)-1-i] = r
+	}
+	return bytes
+}
+
+func ConvertCapacity(str string) CapacityUnit {
+	regFindNum, _ := regexp.Compile(`\d+`)
+	num := regFindNum.FindAllString(str, -1)
+	regFindUnit, _ := regexp.Compile(`\D+`)
+	unit := regFindUnit.FindAllString(str, -1)
+	//TODO 优雅转换成单位
+	return MB
 }

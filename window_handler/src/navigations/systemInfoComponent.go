@@ -20,6 +20,11 @@ var (
 	dicOnce           sync.Once
 )
 
+var (
+	testSpeedComponent fyne.CanvasObject
+	tsOnce             sync.Once
+)
+
 func GetLocalSystemInfoComponent(_ fyne.Window) fyne.CanvasObject {
 	lsiOnce.Do(func() {
 		osInfoContainer := loadValue2Label("OS : ", getBindString(config.LocalSystemInfo.OS))
@@ -43,10 +48,32 @@ func GetDiskInfoComponent(_ fyne.Window) fyne.CanvasObject {
 	return diskInfoComponent
 }
 
+func GetTestDiskSpeedComponent(_ fyne.Window) fyne.CanvasObject {
+
+	tsOnce.Do(func() {
+		fileSizeSelect := widget.NewSelect([]string{"128MB", "512MB", "1GB", "4GB"}, nil)
+		fileSizeComp := getLabelSelect("Test size:    ", fileSizeSelect)
+		bufferSizeSelect := widget.NewSelect([]string{"512B", "1KB", "4KB"}, nil)
+		bufferSizeComp := getLabelSelect("Buffer size: ", bufferSizeSelect)
+
+		top := container.NewVBox(
+			fileSizeComp,
+			bufferSizeComp,
+		)
+		charts := container.NewMax()
+		startBtn := widget.NewButton("Start", func() {
+
+		})
+		result := widget.NewLabel("Click start button to get result!")
+		bottom := container.NewHSplit(charts, container.NewGridWithRows(2, startBtn, result))
+		testSpeedComponent = container.NewVSplit(top, bottom)
+	})
+	return testSpeedComponent
+}
+
 func loadDiskInfo() {
 	diskInfosContainer := container.NewVBox()
 	for _, disk := range worker.DiskPartitionsCache {
-		name := widget.NewLabel("Disk Name: " + disk.Name)
 		totalSize := binding.BindString(&disk.TotalSize)
 		totalSizeLab := loadValue2Label("Total Size: ", totalSize)
 		freeSize := binding.BindString(&disk.FreeSize)
@@ -57,15 +84,13 @@ func loadDiskInfo() {
 		usedPer := binding.BindFloat(&disk.UsedPercent)
 		perProgress := widget.NewProgressBarWithData(usedPer)
 		diskComp := container.NewVBox(
-			name,
 			totalSizeLab,
 			freeSizeLab,
 			fsTypeLabe,
 			perProgress,
 		)
-		diskInfosContainer.Add(diskComp)
+		diskInfosContainer.Add(widget.NewCard(disk.Name, "", diskComp))
 	}
 	diskInfosContainer.Resize(classicSize)
 	diskInfoComponent = container.NewMax(container.NewScroll(diskInfosContainer))
-
 }

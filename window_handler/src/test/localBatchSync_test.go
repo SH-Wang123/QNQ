@@ -15,22 +15,23 @@ type localBatchSyncCase struct {
 	prefixName    string
 	depth         int
 	layerSize     int
-	fileSize      int
+	fileSize      worker.CapacityUnit
 	randomSize    bool
 	randomContent bool
-	count         int
+	count         int64
+	bufferSize    worker.CapacityUnit
 }
 
 var localBatchSyncTestCase = []localBatchSyncCase{
-	{"/1KB", "/1KB_", 5, 5, 1, false, true, 0},
-	{"/4KB", "/4KB_", 5, 5, 4, false, true, 0},
-	{"/8KB", "/8KB_", 5, 5, 8, false, true, 0},
-	{"/512KB", "/512KB_", 5, 5, 512, false, true, 0},
-	{"/1024KB", "/1024KB_", 5, 5, 1024, false, true, 0},
+	{"/1KB", "/1KB_", 5, 5, 1 * worker.KB, false, true, 0, 1 * worker.KB},
+	{"/4KB", "/4KB_", 5, 5, 4 * worker.KB, false, true, 0, 1 * worker.KB},
+	{"/8KB", "/8KB_", 5, 5, 8 * worker.KB, false, true, 0, 1 * worker.KB},
+	{"/512KB", "/512KB_", 5, 5, 512 * worker.KB, false, true, 0, 1 * worker.KB},
+	{"/1024KB", "/1024KB_", 5, 5, 1 * worker.MB, false, true, 0, 1 * worker.KB},
 }
 
 var periodicLocalBatchSyncTestCase = []localBatchSyncCase{
-	{"/1KB", "/1KB_", 2, 2, 1, false, true, 0},
+	{"/1KB", "/1KB_", 2, 2, 1 * worker.KB, false, true, 0, 1 * worker.KB},
 }
 
 var sourcePath = utRoot + batchFileSyncUT + sourceRoot
@@ -107,8 +108,9 @@ func batchSyncCreateTargetFile(tc []localBatchSyncCase, t *testing.T) {
 		startTime := time.Now()
 		t.Logf("create target file [%v] start, time : %v", testCase.prefixName, time.Now())
 		startAbsPath, _ := filepath.Abs(sourcePath + testCase.startPath)
-		count := 0
-		createFileTree(&(testCase.prefixName),
+		count := int64(0)
+		createFileTree(testCase.bufferSize,
+			&(testCase.prefixName),
 			startAbsPath,
 			testCase.depth,
 			testCase.layerSize,
@@ -118,12 +120,12 @@ func batchSyncCreateTargetFile(tc []localBatchSyncCase, t *testing.T) {
 			&count)
 		testCase.count = count
 		overTime := time.Now()
-		userTime := overTime.Second() - startTime.Second()
-		if userTime <= 0 {
-			userTime = 1
+		useTime := int64(overTime.Sub(startTime) / time.Second)
+		if useTime <= 0 {
+			useTime = 1
 		}
-		totalSize := testCase.count * testCase.fileSize
-		t.Logf("create target file : [%v] over, total size : [%vKB], rate : [%vKB/s], time : %v", testCase.prefixName, totalSize/userTime, totalSize, overTime)
+		totalSize := (testCase.count * int64(testCase.fileSize)) / int64(worker.MB)
+		t.Logf("create target file : [%v] over, total size : [%vKB], rate : [%vKB/s], time : %v", testCase.prefixName, totalSize/useTime, totalSize, overTime)
 		t.Logf("-----------")
 	}
 }

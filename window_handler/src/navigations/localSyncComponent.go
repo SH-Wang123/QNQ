@@ -140,7 +140,7 @@ func GetBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 			progressBox,
 			localBatchPolicySyncBox,
 		)
-		localBatchSyncComponent = container.NewBorder(FileSyncComponent, nil, getFileTree(), getFileTree())
+		localBatchSyncComponent = container.NewBorder(FileSyncComponent, nil, nil, nil)
 	})
 	//ProgressBar.Hide()
 	go watchLocalSyncPolicy()
@@ -322,12 +322,14 @@ func getSyncPolicyBtn(isBatchSync bool, win fyne.Window) *widget.Button {
 				config.SystemConfigCache.NotifyAll()
 				tem := false
 				if configCache.PolicySwitch {
-					worker.StartPeriodicSync(node,
-						configCache.TargetPath,
-						time.Duration(configCache.PeriodicSync.Rate)*configCache.PeriodicSync.Cycle,
-						&tem,
-						isBatchSync,
-					)
+					if configCache.PeriodicSync.Enable {
+						worker.StartPeriodicSync(node,
+							configCache.TargetPath,
+							time.Duration(configCache.PeriodicSync.Rate)*configCache.PeriodicSync.Cycle,
+							&tem,
+							isBatchSync,
+						)
+					}
 				}
 			}
 		}, win)

@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"fmt"
 	"github.com/shirou/gopsutil/disk"
 )
 
@@ -21,4 +22,15 @@ func GetPartitionsInfo() {
 		partitions = append(partitions, p)
 	}
 	DiskPartitionsCache = partitions
+}
+
+func TestDiskSpeed(bufferSize CapacityUnit, totalSize CapacityUnit, drive string) (writeSpeed string, readSpeed string) {
+	fileName := drive + "/test_speed"
+	_, wirteTime := CreateFile(bufferSize, fileName, totalSize, true)
+	err := DeleteFile(fileName)
+	if err != nil {
+		return "N/A MB/s", "N/A MB/s"
+	}
+	writeSpeed = fmt.Sprint(int64(totalSize)/int64(MB)/int64(wirteTime)) + " MB/s"
+	return writeSpeed, ""
 }

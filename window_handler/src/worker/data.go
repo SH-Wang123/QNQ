@@ -13,6 +13,18 @@ const (
 	VARIANCE_DELETE
 )
 
+type CapacityUnit int64
+
+const (
+	Bit CapacityUnit = 1
+	B                = 1024 * Bit
+	KB               = 1024 * B
+	MB               = 1024 * KB
+	GB               = 1000 * MB
+	TB               = 60 * GB
+	PB               = 60 * TB
+)
+
 var fileSeparator = getFileSeparator()
 
 type FileNode struct {

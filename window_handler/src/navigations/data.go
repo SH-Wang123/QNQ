@@ -92,7 +92,7 @@ var (
 		},
 		"remoteSingleSync": {
 			"Remote sync",
-			"Remote",
+			"",
 			GetRemoteSingleComponent,
 			true,
 		},
@@ -108,26 +108,18 @@ var (
 			GetDiskInfoComponent,
 			true,
 		},
+		"testDiskSpeed": {
+			"Test Disk Speed",
+			"",
+			GetTestDiskSpeedComponent,
+			true,
+		},
 	}
 	//设置菜单树
 	NavigationIndex = map[string][]string{
 		"":           {"localSync", "systemInfo", "remoteSync"},
 		"localSync":  {"localBatchSync", "localSingleSync"},
-		"systemInfo": {"diskInfo"},
+		"systemInfo": {"diskInfo", "testDiskSpeed"},
 		"remoteSync": {"remoteSingleSync"},
 	}
 )
-
-func initTimeCycle() {
-	timeCycleMap["Second"] = time.Second
-	timeCycleMap["Minute"] = time.Minute
-	timeCycleMap["Hour"] = time.Hour
-
-	dayCycleMap[dayArrayList[0]] = time.Sunday
-	dayCycleMap[dayArrayList[1]] = time.Monday
-	dayCycleMap[dayArrayList[2]] = time.Tuesday
-	dayCycleMap[dayArrayList[3]] = time.Wednesday
-	dayCycleMap[dayArrayList[4]] = time.Thursday
-	dayCycleMap[dayArrayList[5]] = time.Friday
-	dayCycleMap[dayArrayList[6]] = time.Saturday
-}

@@ -46,6 +46,10 @@ func loadValue2Label(text string, bindValue binding.String) *fyne.Container {
 	)
 }
 
+func getLabelSelect(text string, selectCom *widget.Select) *fyne.Container {
+	return container.NewHBox(widget.NewLabel(text), selectCom)
+}
+
 func makeOpenFolderBtn(buttonName string, win fyne.Window, bindPath binding.String, configStr *string) *widget.Button {
 	return widget.NewButton(buttonName, func() {
 		dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
