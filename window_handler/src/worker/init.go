@@ -8,6 +8,16 @@ import (
 
 var TotalFileNum = 0.0
 var DoneFileNum = 0.0
+var CapacityStrMap = make(map[string]CapacityUnit)
+
+func init() {
+	CapacityStrMap["Byte"] = Byte
+	CapacityStrMap["KB"] = KB
+	CapacityStrMap["MB"] = MB
+	CapacityStrMap["GB"] = GB
+	CapacityStrMap["TB"] = TB
+	CapacityStrMap["PB"] = PB
+}
 
 func InitFileNode(initAll bool, async bool) {
 	LocalBSFileNode = &FileNode{

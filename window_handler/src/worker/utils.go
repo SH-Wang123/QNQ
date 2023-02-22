@@ -140,12 +140,12 @@ func stringToUint64(s string) (uint64, error) {
 func CreateFile(bufferSize CapacityUnit, filePath string, fileSize CapacityUnit, randomContent bool) (success bool, usedTime int) {
 	exist, err := IsExist(filePath)
 	if exist {
-		return false, 0
+		return false, 1
 	}
 
 	f, err := OpenFile(filePath, true)
 	if err != nil {
-		return false, 0
+		return false, 1
 	}
 	defer f.Close()
 	content := make([]byte, bufferSize)
@@ -175,14 +175,21 @@ func randomPalindrome(size CapacityUnit) []byte {
 		bytes[i] = r
 		bytes[int(size)-1-i] = r
 	}
+	log.Print(len(bytes))
 	return bytes
 }
 
 func ConvertCapacity(str string) CapacityUnit {
 	regFindNum, _ := regexp.Compile(`\d+`)
-	num := regFindNum.FindAllString(str, -1)
+	numStr := regFindNum.FindAllString(str, -1)[0]
 	regFindUnit, _ := regexp.Compile(`\D+`)
-	unit := regFindUnit.FindAllString(str, -1)
-	//TODO 优雅转换成单位
-	return MB
+	unit := regFindUnit.FindAllString(str, -1)[0]
+	var totalCap CapacityUnit
+	for k, v := range CapacityStrMap {
+		if k == unit {
+			totalCap = v
+		}
+	}
+	num, _ := strconv.Atoi(numStr)
+	return CapacityUnit(int64(num)) * totalCap
 }
