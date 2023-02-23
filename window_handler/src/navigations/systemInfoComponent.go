@@ -5,6 +5,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
+	"image/color"
 	"sync"
 	"window_handler/config"
 	"window_handler/worker"
@@ -22,6 +23,8 @@ var (
 
 var (
 	testSpeedComponent fyne.CanvasObject
+	testSpeedRetLab    *widget.Label
+	partitionSelect    *widget.Select
 	tsOnce             sync.Once
 )
 
@@ -53,19 +56,39 @@ func GetTestDiskSpeedComponent(_ fyne.Window) fyne.CanvasObject {
 	tsOnce.Do(func() {
 		fileSizeSelect := widget.NewSelect([]string{"128MB", "512MB", "1GB", "4GB"}, nil)
 		fileSizeComp := getLabelSelect("Test size:    ", fileSizeSelect)
-		bufferSizeSelect := widget.NewSelect([]string{"512B", "1KB", "4KB"}, nil)
+		bufferSizeSelect := widget.NewSelect([]string{"512Byte", "1KB", "4KB", "8KB", "1MB", "4MB"}, nil)
 		bufferSizeComp := getLabelSelect("Buffer size: ", bufferSizeSelect)
-
+		var partitions []string
+		for _, v := range worker.DiskPartitionsCache {
+			partitions = append(partitions, v.Name)
+		}
+		partitionSelect = widget.NewSelect(partitions, nil)
+		partitionComp := getLabelSelect("Total path: ", partitionSelect)
+		errorText := widget.NewTextGridFromString("\nPlease select parameters!")
+		errorText.SetRowStyle(1, &widget.CustomTextGridStyle{FGColor: &color.NRGBA{R: 255, G: 0, B: 0, A: 255}, BGColor: color.White})
 		top := container.NewVBox(
+			partitionComp,
 			fileSizeComp,
 			bufferSizeComp,
+			errorText,
 		)
+		errorText.Hide()
 		charts := container.NewMax()
 		startBtn := widget.NewButton("Start", func() {
+			if partitionSelect.Selected == "" || fileSizeSelect.Selected == "" || bufferSizeSelect.Selected == "" {
+				errorText.Show()
+				return
+			} else {
+				errorText.Hide()
+			}
+			totalPath := partitionSelect.Selected
+			fileSize := worker.ConvertCapacity(fileSizeSelect.Selected)
+			bufferSize := worker.ConvertCapacity(bufferSizeSelect.Selected)
 
+			go worker.TestDiskSpeed(bufferSize, fileSize, totalPath)
 		})
-		result := widget.NewLabel("Click start button to get result!")
-		bottom := container.NewHSplit(charts, container.NewGridWithRows(2, startBtn, result))
+		testSpeedRetLab = widget.NewLabel("Click start button to get result!")
+		bottom := container.NewHSplit(charts, container.NewGridWithRows(2, startBtn, testSpeedRetLab))
 		testSpeedComponent = container.NewVSplit(top, bottom)
 	})
 	return testSpeedComponent

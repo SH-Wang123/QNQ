@@ -137,7 +137,7 @@ func stringToUint64(s string) (uint64, error) {
 }
 
 // fileSize : KB
-func CreateFile(bufferSize CapacityUnit, filePath string, fileSize CapacityUnit, randomContent bool) (success bool, usedTime int) {
+func CreateFile(bufferSize CapacityUnit, filePath string, fileSize CapacityUnit, randomContent bool) (success bool, usedTime float64) {
 	exist, err := IsExist(filePath)
 	if exist {
 		return false, 1
@@ -149,16 +149,16 @@ func CreateFile(bufferSize CapacityUnit, filePath string, fileSize CapacityUnit,
 	}
 	defer f.Close()
 	content := make([]byte, bufferSize)
+	if randomContent {
+		content = randomPalindrome(bufferSize)
+	}
 	startTime := time.Now()
 	countSum := int(fileSize / bufferSize)
 	for count := 1; count <= countSum; count++ {
-		if randomContent {
-			content = randomPalindrome(bufferSize)
-		}
 		f.Write(content)
 	}
 	overTime := time.Now()
-	usedTime = int(overTime.Sub(startTime) / time.Second)
+	usedTime = float64(overTime.Sub(startTime) / time.Second)
 	if usedTime == 0 {
 		usedTime++
 	}
@@ -175,7 +175,6 @@ func randomPalindrome(size CapacityUnit) []byte {
 		bytes[i] = r
 		bytes[int(size)-1-i] = r
 	}
-	log.Print(len(bytes))
 	return bytes
 }
 

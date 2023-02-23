@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"sync"
 	"time"
-	"window_handler/common"
 	"window_handler/config"
 	"window_handler/worker"
 )
@@ -142,8 +141,6 @@ func GetBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 		)
 		localBatchSyncComponent = container.NewBorder(FileSyncComponent, nil, nil, nil)
 	})
-	//ProgressBar.Hide()
-	go watchLocalSyncPolicy()
 	return localBatchSyncComponent
 }
 
@@ -357,26 +354,4 @@ func getSyncPolicyBtn(isBatchSync bool, win fyne.Window) *widget.Button {
 
 		batchRefresh(usePeriodicSyncCheck, useTimingSyncCheck, policyEnableCheck, cycleSelect, rateSelect)
 	})
-}
-
-func watchLocalSyncPolicy() {
-	for {
-		select {
-		case c := <-common.GWChannel:
-			if c == common.LOCAL_BATCH_POLICY_RUNNING {
-				localBatchPolicySyncBox.Add(localBatchPolicySyncBar)
-				batchDisable(localBatchSyncPolicyComponent, localBatchStartButton)
-				localBatchSyncComponent.Refresh()
-			} else if c == common.LOCAL_BATCH_POLICY_STOP {
-				batchEnable(localBatchSyncPolicyComponent, localBatchStartButton)
-				localBatchPolicySyncBox.Remove(localBatchPolicySyncBar)
-			} else if c == common.LOCAL_SINGLE_POLICY_RUNNING {
-				localSinglePolicySyncBox.Add(localSinglePolicySyncBar)
-				localSingleSyncComponent.Refresh()
-			} else if c == common.LOCAL_SINGLE_POLICY_STOP {
-				localSinglePolicySyncBox.Remove(localSinglePolicySyncBar)
-			}
-
-		}
-	}
 }

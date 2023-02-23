@@ -1,9 +1,15 @@
 package navigations
 
-import "time"
+import (
+	"fmt"
+	"time"
+	"window_handler/common"
+	"window_handler/worker"
+)
 
 func init() {
 	I18n()
+	go watchGWChannel()
 }
 
 func I18n() {
@@ -22,4 +28,37 @@ func initTimeCycle() {
 	dayCycleMap[dayArrayList[4]] = time.Thursday
 	dayCycleMap[dayArrayList[5]] = time.Friday
 	dayCycleMap[dayArrayList[6]] = time.Saturday
+}
+
+func watchGWChannel() {
+	for {
+		select {
+		case c := <-common.GWChannel:
+			if c == common.LOCAL_BATCH_POLICY_RUNNING {
+				localBatchPolicySyncBox.Add(localBatchPolicySyncBar)
+				batchDisable(localBatchSyncPolicyComponent, localBatchStartButton)
+				localBatchSyncComponent.Refresh()
+			} else if c == common.LOCAL_BATCH_POLICY_STOP {
+				batchEnable(localBatchSyncPolicyComponent, localBatchStartButton)
+				localBatchPolicySyncBox.Remove(localBatchPolicySyncBar)
+			} else if c == common.LOCAL_SINGLE_POLICY_RUNNING {
+				localSinglePolicySyncBox.Add(localSinglePolicySyncBar)
+				localSingleSyncComponent.Refresh()
+			} else if c == common.LOCAL_SINGLE_POLICY_STOP {
+				localSinglePolicySyncBox.Remove(localSinglePolicySyncBar)
+			} else if c == common.TEST_DISK_SPEED_START {
+				testSpeedRetLab.SetText("Testing...")
+			} else if c == common.TEST_DISK_SPEED_OVER {
+				setDiskSpeedRet()
+			}
+
+		}
+	}
+}
+
+func setDiskSpeedRet() {
+	partition := partitionSelect.Selected
+	rSpeed := fmt.Sprint(worker.DiskReadSpeedCache[partition])
+	wSpeed := fmt.Sprint(worker.DiskWriteSpeedCache[partition])
+	testSpeedRetLab.SetText("Disk : " + partition + "\n" + "Read speed : " + rSpeed + "MB/S\n" + "Write speed : " + wSpeed + "MB/S\n")
 }
