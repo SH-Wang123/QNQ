@@ -62,13 +62,13 @@ func StartQServer() {
 }
 
 func StartQClient() {
-	if config.SystemConfigCache.Value().QnqTarget.LocalPath == "0.0.0.0" {
+	if config.SystemConfigCache.Value().QnqSTarget.Ip == "0.0.0.0" {
 		log.Printf("not set QNQ Target")
 		return
 	}
 	var err error
-	log.Printf("client connect %v\n", config.SystemConfigCache.Value().QnqTarget.Ip+ServerPort)
-	ConnectClient, err = net.Dial(ServerNetworkType, config.SystemConfigCache.Value().QnqTarget.Ip+ServerPort)
+	log.Printf("client connect %v\n", config.SystemConfigCache.Value().QnqSTarget.Ip+ServerPort)
+	ConnectClient, err = net.Dial(ServerNetworkType, config.SystemConfigCache.Value().QnqSTarget.Ip+ServerPort)
 	if err != nil {
 		return
 	}

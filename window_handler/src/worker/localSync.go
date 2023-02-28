@@ -110,26 +110,60 @@ func SyncBatchFileTree(node *FileNode, startPath string) {
 	}
 }
 
-func PeriodicLocalBatchSync(node *FileNode, startPath string, duration time.Duration, notEnd *bool) {
-	if BatchSyncPolicyRunFlag {
+func PeriodicLocalBatchSync() {
+	if config.SystemConfigCache.Value().LocalBatchSync.SyncPolicy.PolicySwitch {
+		common.SetLBSPRunning()
+		InitFileNode(true, false)
+		DoneFileNum = 0.0
+		TotalFileNum = 0.0
+		SyncBatchFileTree(LocalBSFileNode, config.SystemConfigCache.Cache.LocalBatchSync.TargetPath)
+		common.SetLBSPStop()
+	} else {
 		return
 	}
-	BatchSyncPolicyRunFlag = true
-	defer func() {
-		BatchSyncPolicyRunFlag = false
-	}()
-	ticker := time.NewTicker(duration)
+}
 
+func PeriodicLocalSingleSync() {
+	if config.SystemConfigCache.Cache.LocalSingleSync.SyncPolicy.PolicySwitch {
+		node := GetSingleFileNode(config.SystemConfigCache.Cache.LocalSingleSync.SourcePath)
+		sf, _ := OpenFile(node.AbstractPath, false)
+		tf := getSingleTargetFile(sf, config.SystemConfigCache.Cache.LocalSingleSync.TargetPath)
+		worker := NewLocalSingleWorker(sf, tf)
+		common.GetCoroutinesPool().Submit(worker.Execute)
+	} else {
+		return
+	}
+}
+
+func PeriodicRemoteBatchSync() {
+}
+
+func PeriodicRemoteSingleSync() {
+}
+
+func TimingLocalBatchSync() {
+
+}
+
+func TimingLocalSingleSync() {
+
+}
+
+func TimingRemoteBatchSync() {
+
+}
+
+func TimingRemoteSingleSync() {
+
+}
+
+func TickerWorker(duration time.Duration, notEnd *bool, workerFunc func()) {
+	ticker := time.NewTicker(duration)
 	for {
 		select {
 		case <-ticker.C:
-			if config.SystemConfigCache.Value().LocalBatchSync.PeriodicSync.Enable || *notEnd {
-				common.SetLBSPRunning()
-				InitFileNode(true, false)
-				DoneFileNum = 0.0
-				TotalFileNum = 0.0
-				SyncBatchFileTree(node, startPath)
-				common.SetLBSPStop()
+			if *notEnd {
+				workerFunc()
 			} else {
 				return
 			}
@@ -137,35 +171,19 @@ func PeriodicLocalBatchSync(node *FileNode, startPath string, duration time.Dura
 	}
 }
 
-func StartPeriodicSync(node *FileNode, startPath string, duration time.Duration, notEnd *bool, isBatch bool) {
+func StartPeriodicSync(duration time.Duration, notEnd *bool, isBatch bool, isRemote bool) {
 	if isBatch {
-		go PeriodicLocalBatchSync(node, startPath, duration, notEnd)
+		if isRemote {
+			go TickerWorker(duration, notEnd, PeriodicRemoteBatchSync)
+		} else {
+			go TickerWorker(duration, notEnd, PeriodicLocalBatchSync)
+		}
+
 	} else {
-		go PeriodicLocalSingleSync(node, startPath, duration, notEnd)
-	}
-}
-
-func PeriodicLocalSingleSync(node *FileNode, startPath string, duration time.Duration, notEnd *bool) {
-	if SingleSyncPolicyRunFlag {
-		return
-	}
-	SingleSyncPolicyRunFlag = true
-	defer func() {
-		SingleSyncPolicyRunFlag = false
-	}()
-	ticker := time.NewTicker(duration)
-
-	for {
-		select {
-		case <-ticker.C:
-			if config.SystemConfigCache.Value().LocalBatchSync.PeriodicSync.Enable || *notEnd {
-				sf, _ := OpenFile(node.AbstractPath, false)
-				tf := getSingleTargetFile(sf, startPath)
-				worker := NewLocalSingleWorker(sf, tf)
-				common.GetCoroutinesPool().Submit(worker.Execute)
-			} else {
-				return
-			}
+		if isRemote {
+			go TickerWorker(duration, notEnd, PeriodicRemoteSingleSync)
+		} else {
+			go TickerWorker(duration, notEnd, PeriodicLocalSingleSync)
 		}
 	}
 }

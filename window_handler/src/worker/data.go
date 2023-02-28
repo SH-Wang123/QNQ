@@ -13,15 +13,15 @@ const (
 	VARIANCE_DELETE
 )
 
-type CapacityUnit int64
+type CapacityUnit uint64
 
 const (
 	Byte CapacityUnit = 1
 	KB                = 1024 * Byte
 	MB                = 1024 * KB
-	GB                = 1000 * MB
-	TB                = 60 * GB
-	PB                = 60 * TB
+	GB                = 1024 * MB
+	TB                = 1024 * GB
+	PB                = 1024 * TB
 )
 
 var fileSeparator = getFileSeparator()
@@ -55,11 +55,13 @@ type Disk struct {
 }
 
 type Partition struct {
-	Name        string
-	FsType      string
-	TotalSize   string
-	FreeSize    string
-	UsedPercent float64
+	Name         string
+	FsType       string
+	TotalSizeStr string
+	TotalSize    uint64
+	FreeSize     uint64
+	FreeSizeStr  string
+	UsedPercent  float64
 }
 
 func getFileSeparator() string {

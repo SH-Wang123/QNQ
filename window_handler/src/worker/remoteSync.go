@@ -86,7 +86,7 @@ func SendSingleFile(s *common.QSender) {
 	}(f)
 	workerSignal := common.RemoteSingleSyncType + s.SN + "0"
 	_, _ = network.WriteStrToQTarget(workerSignal)
-	network.WriteStrToQTarget(network.LoadContent(msgPrefix, config.SystemConfigCache.Value().QnqTarget.LocalPath))
+	network.WriteStrToQTarget(network.LoadContent(msgPrefix, config.SystemConfigCache.Value().QnqSTarget.LocalPath))
 	buf := make([]byte, 4094)
 	var msgfixBytes = []byte{'1', '1'}
 	for {

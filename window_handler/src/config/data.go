@@ -15,29 +15,34 @@ var SystemConfigCache cacheConfig
 
 type systemConfig struct {
 	Version          string           `json:"version"`
-	QnqTarget        qnqTarget        `json:"qnq_target"`
+	QnqSTarget       qnqTarget        `json:"qnq_s_target"`
+	QnqBTarget       qnqTarget        `json:"qnq_b_target"`
 	LocalSingleSync  localSync        `json:"local_single_sync"`
 	LocalBatchSync   localSync        `json:"local_batch_sync"`
 	VarianceAnalysis varianceAnalysis `json:"variance_analysis"`
 }
 
 type localSync struct {
-	SourcePath   string             `json:"source_path"`
-	TargetPath   string             `json:"target_path"`
-	PolicySwitch bool               `json:"policy_switch"`
-	PeriodicSync PeriodicSyncPolicy `json:"periodic_policy"`
-	TimingSync   TimingSyncPolicy   `json:"timing_sync"`
-	Speed        string             `json:"speed"`
-	CheckMd5     bool               `json:"check_md5"`
+	SourcePath string     `json:"source_path"`
+	TargetPath string     `json:"target_path"`
+	SyncPolicy syncPolicy `json:"sync_policy"`
+	Speed      string     `json:"speed"`
+	CheckMd5   bool       `json:"check_md5"`
 }
 
-type PeriodicSyncPolicy struct {
+type syncPolicy struct {
+	PolicySwitch bool               `json:"policy_switch"`
+	PeriodicSync periodicSyncPolicy `json:"periodic_policy"`
+	TimingSync   timingSyncPolicy   `json:"timing_sync"`
+}
+
+type periodicSyncPolicy struct {
 	Cycle  time.Duration `json:"sync_cycle"`
 	Rate   int           `json:"sync_rate"`
 	Enable bool          `json:"enable"`
 }
 
-type TimingSyncPolicy struct {
+type timingSyncPolicy struct {
 	Days   [7]bool   `json:"sync_days"`
 	Time   time.Time `json:"sync_time"`
 	Enable bool      `json:"enable"`
@@ -49,8 +54,10 @@ type varianceAnalysis struct {
 }
 
 type qnqTarget struct {
-	Ip        string `json:"qnq_target_ip"`
-	LocalPath string `json:"local_path"`
+	Ip         string     `json:"qnq_target_ip"`
+	LocalPath  string     `json:"local_path"`
+	RemotePath string     `json:"remote_path"`
+	SyncPolicy syncPolicy `json:"sync_policy"`
 }
 
 type systemInfo struct {
@@ -88,11 +95,17 @@ func (a *cacheConfig) Set(s systemConfig) {
 	a.NotifyAll()
 }
 
-func (a *cacheConfig) GetLocalPeriodicSyncPolicy(isBatch bool) *localSync {
+func (a *cacheConfig) GetSyncPolicy(isBatch bool, isRemote bool) *syncPolicy {
 	if isBatch {
-		return &a.Cache.LocalBatchSync
+		if isRemote {
+			return &a.Cache.QnqSTarget.SyncPolicy
+		}
+		return &a.Cache.LocalBatchSync.SyncPolicy
 	} else {
-		return &a.Cache.LocalSingleSync
+		if isRemote {
+			return &a.Cache.QnqBTarget.SyncPolicy
+		}
+		return &a.Cache.LocalSingleSync.SyncPolicy
 	}
 }
 

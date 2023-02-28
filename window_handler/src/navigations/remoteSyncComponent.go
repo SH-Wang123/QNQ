@@ -20,7 +20,7 @@ var (
 func GetRemoteSyncComponent(_ fyne.Window) fyne.CanvasObject {
 	rscOnce.Do(func() {
 		bindingIp := binding.NewString()
-		bindingIp.Set(config.SystemConfigCache.Value().QnqTarget.Ip)
+		bindingIp.Set(config.SystemConfigCache.Value().QnqSTarget.Ip)
 		ipAddress := widget.NewEntryWithData(bindingIp)
 
 		status := binding.NewBool()
@@ -56,7 +56,7 @@ func GetRemoteSyncComponent(_ fyne.Window) fyne.CanvasObject {
 				} else {
 					errLabel.Hide()
 					okLabel.Show()
-					config.SystemConfigCache.Cache.QnqTarget.Ip = ipAddress.Text
+					config.SystemConfigCache.Cache.QnqSTarget.Ip = ipAddress.Text
 					config.SystemConfigCache.NotifyAll()
 				}
 			}),
@@ -70,12 +70,12 @@ func GetRemoteSyncComponent(_ fyne.Window) fyne.CanvasObject {
 
 func GetRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
 
-	localPathBind := getBindString(config.SystemConfigCache.Value().QnqTarget.LocalPath)
+	localPathBind := getBindString(config.SystemConfigCache.Value().QnqSTarget.LocalPath)
 	localFilePath := widget.NewLabelWithData(localPathBind)
 
 	startButton := widget.NewButton("Start Sync", func() {
 		qSender := worker.NewRemoteSyncSender()
-		qSender.PrivateVariableMap["file_path"] = config.SystemConfigCache.Value().QnqTarget.LocalPath
+		qSender.PrivateVariableMap["file_path"] = config.SystemConfigCache.Value().QnqSTarget.LocalPath
 		go qSender.ExecuteFunc(qSender)
 	})
 	filePathComponent := container.New(layout.NewHBoxLayout(),
@@ -83,12 +83,13 @@ func GetRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
 		makeOpenFolderBtn("Open",
 			win,
 			localPathBind,
-			&config.SystemConfigCache.Cache.QnqTarget.LocalPath),
+			&config.SystemConfigCache.Cache.QnqSTarget.LocalPath),
 	)
-
+	remoteSingleSyncPolicyComponent := getSingleSyncPolicyBtn(win, true)
 	return container.NewVBox(
 		filePathComponent,
 		startButton,
+		remoteSingleSyncPolicyComponent,
 	)
 }
 

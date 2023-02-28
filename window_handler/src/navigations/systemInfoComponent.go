@@ -63,7 +63,7 @@ func GetTestDiskSpeedComponent(_ fyne.Window) fyne.CanvasObject {
 			partitions = append(partitions, v.Name)
 		}
 		partitionSelect = widget.NewSelect(partitions, nil)
-		partitionComp := getLabelSelect("Total path: ", partitionSelect)
+		partitionComp := getLabelSelect("Disk:          ", partitionSelect)
 		errorText := widget.NewTextGridFromString("\nPlease select parameters!")
 		errorText.SetRowStyle(1, &widget.CustomTextGridStyle{FGColor: &color.NRGBA{R: 255, G: 0, B: 0, A: 255}, BGColor: color.White})
 		top := container.NewVBox(
@@ -97,9 +97,9 @@ func GetTestDiskSpeedComponent(_ fyne.Window) fyne.CanvasObject {
 func loadDiskInfo() {
 	diskInfosContainer := container.NewVBox()
 	for _, disk := range worker.DiskPartitionsCache {
-		totalSize := binding.BindString(&disk.TotalSize)
+		totalSize := binding.BindString(&disk.TotalSizeStr)
 		totalSizeLab := loadValue2Label("Total Size: ", totalSize)
-		freeSize := binding.BindString(&disk.FreeSize)
+		freeSize := binding.BindString(&disk.FreeSizeStr)
 		freeSizeLab := loadValue2Label("Free Size: ", freeSize)
 		fsType := binding.BindString(&disk.FsType)
 		fsTypeLabe := loadValue2Label("File System: ", fsType)

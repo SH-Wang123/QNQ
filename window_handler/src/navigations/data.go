@@ -91,8 +91,8 @@ var (
 			true,
 		},
 		"remoteSingleSync": {
-			"Remote sync",
-			"",
+			"Remote Single sync",
+			"Click start button to begin sync.",
 			GetRemoteSingleComponent,
 			true,
 		},
@@ -110,7 +110,7 @@ var (
 		},
 		"testDiskSpeed": {
 			"Test Disk Speed",
-			"",
+			"The recommended buffer size is 4MB.",
 			GetTestDiskSpeedComponent,
 			true,
 		},

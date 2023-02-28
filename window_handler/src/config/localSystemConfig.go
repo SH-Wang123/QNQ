@@ -2,8 +2,6 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"os"
 )
 
@@ -30,7 +28,6 @@ func (l *LocalConfigObserver) SetName(name string) {
 func InputConfig(config systemConfig) {
 	result, _ := json.MarshalIndent(config, "", "    ")
 	_ = os.WriteFile(CONFOG_PATH, result, 0644)
-	log.Println("update system config: ", fmt.Sprintf("%s", config))
 }
 
 func readConfig() systemConfig {

@@ -6,20 +6,25 @@ import (
 )
 
 var DiskPartitionsCache []Partition
-var DiskReadSpeedCache = make(map[string]int)
-var DiskWriteSpeedCache = make(map[string]int)
+var DiskReadSpeedCache = make(map[string]float64)
+var DiskWriteSpeedCache = make(map[string]float64)
 
 func GetPartitionsInfo() {
 	var partitions []Partition
 	partitionsInfo, _ := disk.Partitions(true)
+
 	for _, info := range partitionsInfo {
 		moreInfo, _ := disk.Usage(info.Device)
+		totalStr := GetSuitableCapacityStr(moreInfo.Total)
+		freeStr := GetSuitableCapacityStr(moreInfo.Free)
 		var p = Partition{
-			Name:        info.Device,
-			FsType:      info.Fstype,
-			TotalSize:   uint64ToString(moreInfo.Total/1024/1024/1024) + "GB",
-			FreeSize:    uint64ToString(moreInfo.Free/1024/1024/1024) + "GB",
-			UsedPercent: moreInfo.UsedPercent / 100,
+			Name:         info.Device,
+			FsType:       info.Fstype,
+			TotalSize:    moreInfo.Total,
+			TotalSizeStr: totalStr,
+			FreeSizeStr:  freeStr,
+			FreeSize:     moreInfo.Free,
+			UsedPercent:  moreInfo.UsedPercent / 100,
 		}
 		partitions = append(partitions, p)
 	}
@@ -33,14 +38,13 @@ func TestDiskSpeed(bufferSize CapacityUnit, totalSize CapacityUnit, drive string
 	}()
 	fileName := drive + "/test_speed"
 	DeleteFile(fileName)
-	_, wirteTime := CreateFile(bufferSize, fileName, totalSize, true)
-	err := DeleteFile(fileName)
-	if err != nil {
-		DiskWriteSpeedCache[drive] = -1
-		return 0, 0
-	}
-	DiskWriteSpeedCache[drive] = int(getMb(totalSize) / wirteTime)
 
+	_, wirteTime := CreateFile(bufferSize, fileName, totalSize, true)
+	defer DeleteFile(fileName)
+	DiskWriteSpeedCache[drive] = FloatRound(float64(getMb(totalSize))/wirteTime, 2)
+
+	_, readTime := ReadFile(fileName, bufferSize)
+	DiskReadSpeedCache[drive] = FloatRound(float64(getMb(totalSize))/readTime, 2)
 	return writeSpeed, 0
 }
 

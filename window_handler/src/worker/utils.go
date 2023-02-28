@@ -3,6 +3,7 @@ package worker
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"log"
 	"math/rand"
@@ -157,8 +158,32 @@ func CreateFile(bufferSize CapacityUnit, filePath string, fileSize CapacityUnit,
 	for count := 1; count <= countSum; count++ {
 		f.Write(content)
 	}
-	overTime := time.Now()
-	usedTime = float64(overTime.Sub(startTime) / time.Second)
+	usedTime = float64(time.Now().Sub(startTime)) / float64(time.Second)
+	if usedTime == 0 {
+		usedTime++
+	}
+	return true, usedTime
+}
+
+func ReadFile(filePath string, bufferSize CapacityUnit) (success bool, usedTime float64) {
+	exist, _ := IsExist(filePath)
+	if !exist {
+		return false, 1
+	}
+	startTime := time.Now()
+	f, err := OpenFile(filePath, true)
+	if err != nil {
+		return false, 1
+	}
+	buffer := make([]byte, bufferSize)
+	for {
+		_, err = f.Read(buffer)
+		if err == io.EOF {
+			break
+		}
+	}
+	f.Close()
+	usedTime = float64(time.Now().Sub(startTime)) / float64(time.Second)
 	if usedTime == 0 {
 		usedTime++
 	}
@@ -191,4 +216,24 @@ func ConvertCapacity(str string) CapacityUnit {
 	}
 	num, _ := strconv.Atoi(numStr)
 	return CapacityUnit(int64(num)) * totalCap
+}
+
+func FloatRound(f float64, n int) float64 {
+	format := "%." + strconv.Itoa(n) + "f"
+	res, _ := strconv.ParseFloat(fmt.Sprintf(format, f), 64)
+	return res
+}
+
+func GetSuitableCapacityStr(c uint64) string {
+	var ret string
+	if c/uint64(GB) == 0 {
+		if c/uint64(MB) == 0 {
+			ret = fmt.Sprintf("%vKB", c/uint64(KB))
+		} else {
+			ret = fmt.Sprintf("%vMB", c/uint64(MB))
+		}
+	} else {
+		ret = fmt.Sprintf("%vGB", c/uint64(GB))
+	}
+	return ret
 }

@@ -1,6 +1,7 @@
 package navigations
 
 import (
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
@@ -8,8 +9,11 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 	"log"
+	"strconv"
+	"time"
 	"unsafe"
 	"window_handler/config"
+	"window_handler/worker"
 )
 
 func bindingValue2Label(text string, value interface{}) *fyne.Container {
@@ -144,4 +148,157 @@ func enableAllChild(key string, root fyne.Disableable) {
 func swapChecked(w *widget.Check) {
 	w.SetChecked(!w.Checked)
 	w.SetChecked(!w.Checked)
+}
+
+func getBatchSyncPolicyBtn(win fyne.Window, isRemote bool) *widget.Button {
+	if isRemote {
+		return getSyncPolicyBtn(true, true, win)
+	}
+	return getSyncPolicyBtn(true, false, win)
+}
+
+func getSingleSyncPolicyBtn(win fyne.Window, isRemote bool) *widget.Button {
+	if isRemote {
+		return getSyncPolicyBtn(false, true, win)
+	}
+	return getSyncPolicyBtn(false, false, win)
+}
+
+func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, win fyne.Window) *widget.Button {
+	return widget.NewButton("Sync Policy", func() {
+		var title string
+		var daysCheckCompent [7]*widget.Check
+		var rateSelectedValue string
+		var disableCacheKey string
+		var usePeriodicSyncCheck *widget.Check
+		var useTimingSyncCheck *widget.Check
+		var policyEnableCheck *widget.Check
+		configCache := config.SystemConfigCache.GetSyncPolicy(isBatchSync, isRemoteSync)
+		rateList := make([]string, 0)
+		cycleList := make([]string, 0)
+
+		if isBatchSync {
+			if isRemoteSync {
+				title = "Remote batch sync policy"
+			} else {
+				title = "Local batch sync policy"
+			}
+		} else {
+			if isRemoteSync {
+				title = "Remote single sync policy"
+			} else {
+				title = "Local single sync policy"
+			}
+		}
+		disableCacheKey = title
+		clearDisableRootCache(disableCacheKey)
+		//Periodic sync
+		for i := 1; i <= 60; i++ {
+			rateList = append(rateList, fmt.Sprintf("%d", i))
+		}
+		rateSelect := widget.NewSelect(rateList, nil)
+		for k, v := range timeCycleMap {
+			cycleList = append(cycleList, k)
+			if v == configCache.PeriodicSync.Cycle {
+				rateSelectedValue = k
+			}
+		}
+		cycleSelect := widget.NewSelect(cycleList, nil)
+		rateAndCycleComponent := container.NewHBox(
+			rateSelect,
+			cycleSelect,
+		)
+
+		//Timing sync
+		daysContainer := container.NewGridWithColumns(7)
+		for index := 0; index < len(daysCheckCompent); index++ {
+			daysCheckCompent[index] = widget.NewCheck(dayArrayList[index], nil)
+			daysContainer.Add(daysCheckCompent[index])
+		}
+
+		usePeriodicSyncCheck = widget.NewCheck("Used periodic sync", func(b bool) {
+			if b {
+				enableAllChild(disableCacheKey, usePeriodicSyncCheck)
+			} else {
+				disableAllChild(disableCacheKey, usePeriodicSyncCheck)
+			}
+		})
+		addDisableRoot(disableCacheKey, usePeriodicSyncCheck, rateSelect, cycleSelect)
+
+		useTimingSyncCheck = widget.NewCheck("Used timing sync", func(b bool) {
+			if b {
+				enableAllChild(disableCacheKey, useTimingSyncCheck)
+			} else {
+				disableAllChild(disableCacheKey, useTimingSyncCheck)
+			}
+		})
+		addDisableRoot(disableCacheKey, useTimingSyncCheck, daysCheckCompent[0], daysCheckCompent[1], daysCheckCompent[2], daysCheckCompent[3],
+			daysCheckCompent[4], daysCheckCompent[5], daysCheckCompent[6])
+
+		policyEnableCheck = widget.NewCheck("Global switch", func(b bool) {
+			swapChecked(usePeriodicSyncCheck)
+			swapChecked(useTimingSyncCheck)
+			if b {
+				enableAllChild(disableCacheKey, policyEnableCheck)
+			} else {
+				disableAllChild(disableCacheKey, policyEnableCheck)
+			}
+		})
+		addDisableRoot(disableCacheKey, policyEnableCheck, usePeriodicSyncCheck, useTimingSyncCheck)
+		items := []*widget.FormItem{
+			widget.NewFormItem("Select: ", useTimingSyncCheck),
+			widget.NewFormItem("Time:  ", daysContainer),
+			widget.NewFormItem("Select: ", usePeriodicSyncCheck),
+			widget.NewFormItem("Sync cycle: ", rateAndCycleComponent),
+			widget.NewFormItem("Select: ", policyEnableCheck),
+		}
+
+		dialog.ShowForm(title, "Save & Start", "Cancel", items, func(b bool) {
+			if b {
+				configCache.PeriodicSync.Rate, _ = strconv.Atoi(rateSelect.Selected)
+				configCache.PeriodicSync.Cycle = timeCycleMap[cycleSelect.Selected]
+				configCache.PeriodicSync.Enable = usePeriodicSyncCheck.Checked
+				configCache.TimingSync.Enable = useTimingSyncCheck.Checked
+				configCache.PolicySwitch = policyEnableCheck.Checked
+				for index := 0; index < len(daysCheckCompent); index++ {
+					configCache.TimingSync.Days[index] = daysCheckCompent[index].Checked
+				}
+				config.SystemConfigCache.NotifyAll()
+				tem := false
+				if configCache.PolicySwitch {
+					if configCache.PeriodicSync.Enable {
+						worker.StartPeriodicSync(
+							time.Duration(configCache.PeriodicSync.Rate)*configCache.PeriodicSync.Cycle,
+							&tem,
+							isBatchSync,
+							isRemoteSync,
+						)
+					}
+				}
+			}
+		}, win)
+		//init value
+		cycleSelect.SetSelected(rateSelectedValue)
+		rateSelect.SetSelected(fmt.Sprintf("%d", configCache.PeriodicSync.Rate))
+
+		usePeriodicSyncCheck.Checked = configCache.PeriodicSync.Enable
+		useTimingSyncCheck.Checked = configCache.TimingSync.Enable
+		policyEnableCheck.Checked = configCache.PolicySwitch
+
+		if !configCache.PeriodicSync.Enable {
+			disableAllChild(disableCacheKey, usePeriodicSyncCheck)
+		}
+		if !configCache.TimingSync.Enable {
+			disableAllChild(disableCacheKey, useTimingSyncCheck)
+		}
+		if !policyEnableCheck.Checked {
+			disableAllChild(disableCacheKey, policyEnableCheck)
+		}
+
+		for index := 0; index < len(daysCheckCompent); index++ {
+			daysCheckCompent[index].SetChecked(configCache.TimingSync.Days[index])
+		}
+
+		batchRefresh(usePeriodicSyncCheck, useTimingSyncCheck, policyEnableCheck, cycleSelect, rateSelect)
+	})
 }
