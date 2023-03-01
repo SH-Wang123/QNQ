@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+	"window_handler/config"
 	"window_handler/worker"
 )
 
@@ -70,6 +71,7 @@ func TestPeriodicLocalBatchSync(t *testing.T) {
 	preBatchFileSyncCase()
 	defer inhibitLog()()
 	batchSyncCreateTargetFile(periodicLocalBatchSyncTestCase, t)
+	configCache := config.SystemConfigCache.Cache.LocalBatchSync
 	for _, testCase := range periodicLocalBatchSyncTestCase {
 		startAbsPath, _ := filepath.Abs(sourcePath + testCase.startPath)
 		startNode := &worker.FileNode{
@@ -87,7 +89,10 @@ func TestPeriodicLocalBatchSync(t *testing.T) {
 			<-ticker.C
 			notEndFlag = false
 		}()
-		worker.PeriodicLocalBatchSync(startNode, targetPath+testCase.startPath, 1*time.Minute, &notEndFlag)
+		configCache.TargetPath = targetPath + testCase.startPath
+		configCache.SyncPolicy.PolicySwitch = true
+		configCache.SyncPolicy.PeriodicSync.Cycle = time.Minute
+		worker.StartPeriodicSync(time.Minute, &notEndFlag, true, false)
 		errorInfo := worker.GetBatchSyncError()
 		if len(errorInfo) == 0 {
 			t.Logf(batchFileSyncUTLog+"periodic policy case {%v} ok!!!  time: %v", testCase.prefixName, time.Now())

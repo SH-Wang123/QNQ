@@ -45,6 +45,8 @@ func loadDefaultConfig() {
 		},
 		TimingSync: timingSyncPolicy{
 			Days:   [7]bool{false, false, false, false, false, false, false},
+			Hour:   15,
+			Minute: 0,
 			Enable: false,
 		},
 	}

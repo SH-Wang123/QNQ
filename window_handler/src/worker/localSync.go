@@ -113,6 +113,9 @@ func SyncBatchFileTree(node *FileNode, startPath string) {
 func PeriodicLocalBatchSync() {
 	if config.SystemConfigCache.Value().LocalBatchSync.SyncPolicy.PolicySwitch {
 		common.SetLBSPRunning()
+		if common.LocalBatchPolicyRunningFlag {
+			return
+		}
 		InitFileNode(true, false)
 		DoneFileNum = 0.0
 		TotalFileNum = 0.0
@@ -162,8 +165,8 @@ func TickerWorker(duration time.Duration, notEnd *bool, workerFunc func()) {
 	for {
 		select {
 		case <-ticker.C:
-			if *notEnd {
-				workerFunc()
+			if !*notEnd {
+				go workerFunc()
 			} else {
 				return
 			}

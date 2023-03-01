@@ -61,6 +61,9 @@ func makeOpenFolderBtn(buttonName string, win fyne.Window, bindPath binding.Stri
 				dialog.ShowError(err, win)
 				return
 			}
+			if uri == nil {
+				return
+			}
 			_, err = uri.List()
 			if err != nil {
 				dialog.ShowError(err, win)
@@ -176,7 +179,6 @@ func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, win fyne.Window) *wid
 		configCache := config.SystemConfigCache.GetSyncPolicy(isBatchSync, isRemoteSync)
 		rateList := make([]string, 0)
 		cycleList := make([]string, 0)
-
 		if isBatchSync {
 			if isRemoteSync {
 				title = "Remote batch sync policy"
@@ -215,6 +217,22 @@ func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, win fyne.Window) *wid
 			daysCheckCompent[index] = widget.NewCheck(dayArrayList[index], nil)
 			daysContainer.Add(daysCheckCompent[index])
 		}
+		indexArray := make([]string, 0)
+		for i := 0; i <= 24; i++ {
+			s := fmt.Sprintf("%d", i)
+			indexArray = append(indexArray, s)
+		}
+		hourSelect := widget.NewSelect(indexArray, nil)
+		for i := 25; i <= 60; i++ {
+			indexArray = append(indexArray, fmt.Sprint(i))
+		}
+		minSelect := widget.NewSelect(indexArray, nil)
+		timeContainer := container.NewHBox(
+			widget.NewLabel("Hour:"),
+			hourSelect,
+			widget.NewLabel("Minute:"),
+			minSelect,
+		)
 
 		usePeriodicSyncCheck = widget.NewCheck("Used periodic sync", func(b bool) {
 			if b {
@@ -233,7 +251,7 @@ func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, win fyne.Window) *wid
 			}
 		})
 		addDisableRoot(disableCacheKey, useTimingSyncCheck, daysCheckCompent[0], daysCheckCompent[1], daysCheckCompent[2], daysCheckCompent[3],
-			daysCheckCompent[4], daysCheckCompent[5], daysCheckCompent[6])
+			daysCheckCompent[4], daysCheckCompent[5], daysCheckCompent[6], minSelect, hourSelect)
 
 		policyEnableCheck = widget.NewCheck("Global switch", func(b bool) {
 			swapChecked(usePeriodicSyncCheck)
@@ -247,7 +265,8 @@ func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, win fyne.Window) *wid
 		addDisableRoot(disableCacheKey, policyEnableCheck, usePeriodicSyncCheck, useTimingSyncCheck)
 		items := []*widget.FormItem{
 			widget.NewFormItem("Select: ", useTimingSyncCheck),
-			widget.NewFormItem("Time:  ", daysContainer),
+			widget.NewFormItem("Day:  ", daysContainer),
+			widget.NewFormItem("", timeContainer),
 			widget.NewFormItem("Select: ", usePeriodicSyncCheck),
 			widget.NewFormItem("Sync cycle: ", rateAndCycleComponent),
 			widget.NewFormItem("Select: ", policyEnableCheck),
@@ -260,6 +279,10 @@ func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, win fyne.Window) *wid
 				configCache.PeriodicSync.Enable = usePeriodicSyncCheck.Checked
 				configCache.TimingSync.Enable = useTimingSyncCheck.Checked
 				configCache.PolicySwitch = policyEnableCheck.Checked
+				minute, _ := strconv.Atoi(minSelect.Selected)
+				hour, _ := strconv.Atoi(hourSelect.Selected)
+				configCache.TimingSync.Minute = uint8(minute)
+				configCache.TimingSync.Hour = uint8(hour)
 				for index := 0; index < len(daysCheckCompent); index++ {
 					configCache.TimingSync.Days[index] = daysCheckCompent[index].Checked
 				}
@@ -280,6 +303,8 @@ func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, win fyne.Window) *wid
 		//init value
 		cycleSelect.SetSelected(rateSelectedValue)
 		rateSelect.SetSelected(fmt.Sprintf("%d", configCache.PeriodicSync.Rate))
+		minSelect.SetSelected(fmt.Sprintf("%d", configCache.TimingSync.Minute))
+		hourSelect.SetSelected(fmt.Sprintf("%d", configCache.TimingSync.Hour))
 
 		usePeriodicSyncCheck.Checked = configCache.PeriodicSync.Enable
 		useTimingSyncCheck.Checked = configCache.TimingSync.Enable
@@ -299,6 +324,6 @@ func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, win fyne.Window) *wid
 			daysCheckCompent[index].SetChecked(configCache.TimingSync.Days[index])
 		}
 
-		batchRefresh(usePeriodicSyncCheck, useTimingSyncCheck, policyEnableCheck, cycleSelect, rateSelect)
+		batchRefresh(usePeriodicSyncCheck, useTimingSyncCheck, policyEnableCheck, cycleSelect, rateSelect, minSelect, hourSelect)
 	})
 }

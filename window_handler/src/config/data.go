@@ -43,9 +43,10 @@ type periodicSyncPolicy struct {
 }
 
 type timingSyncPolicy struct {
-	Days   [7]bool   `json:"sync_days"`
-	Time   time.Time `json:"sync_time"`
-	Enable bool      `json:"enable"`
+	Days   [7]bool `json:"sync_days"`
+	Hour   uint8   `json:"hour"`
+	Minute uint8   `json:"minute"`
+	Enable bool    `json:"enable"`
 }
 
 type varianceAnalysis struct {

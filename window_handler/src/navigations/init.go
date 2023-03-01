@@ -2,6 +2,8 @@ package navigations
 
 import (
 	"fmt"
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/dialog"
 	"time"
 	"window_handler/common"
 	"window_handler/worker"
@@ -14,6 +16,11 @@ func init() {
 
 func I18n() {
 	initTimeCycle()
+}
+
+func SetMainWin(win *fyne.Window) {
+	mainWin = win
+	syncErrorDialog = dialog.NewInformation("Sync task warning!", "Sync task enters repeatedly, please adjust the time interval.", *mainWin)
 }
 
 func initTimeCycle() {
@@ -35,11 +42,21 @@ func watchGWChannel() {
 		select {
 		case c := <-common.GWChannel:
 			if c == common.LOCAL_BATCH_POLICY_RUNNING {
+				if common.LocalBatchPolicyRunningFlag {
+					syncErrorDialogOK = true
+					if !syncErrorDialogOK {
+						syncErrorDialog.Show()
+					}
+					continue
+				}
+				common.LocalBatchPolicyRunningFlag = true
 				localBatchPolicySyncBox.Add(localBatchPolicySyncBar)
-				batchDisable(localBatchSyncPolicyComponent, localBatchStartButton)
+				batchDisable(localBatchSyncPolicyComponent, localBatchStartButton, diffAnalysisButton)
 				localBatchSyncComponent.Refresh()
 			} else if c == common.LOCAL_BATCH_POLICY_STOP {
-				batchEnable(localBatchSyncPolicyComponent, localBatchStartButton)
+				batchEnable(localBatchSyncPolicyComponent, localBatchStartButton, diffAnalysisButton)
+				common.LocalBatchPolicyRunningFlag = false
+				syncErrorDialogOK = false
 				localBatchPolicySyncBox.Remove(localBatchPolicySyncBar)
 			} else if c == common.LOCAL_SINGLE_POLICY_RUNNING {
 				localSinglePolicySyncBox.Add(localSinglePolicySyncBar)

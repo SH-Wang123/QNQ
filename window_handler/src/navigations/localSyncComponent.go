@@ -29,6 +29,7 @@ var (
 var (
 	localBatchSyncComponent fyne.CanvasObject
 	localBatchStartButton   *widget.Button
+	diffAnalysisButton      *widget.Button
 	blcOnce                 sync.Once
 )
 
@@ -77,7 +78,7 @@ func GetSingleLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 		)
 		localSingleSyncPolicyComponent = getSingleSyncPolicyBtn(win, false)
 
-		syncPolicyRunningStatusComp := getPolicyStatusLabel(false)
+		syncPolicyRunningStatusComp := getPolicyStatusLabel(false, false)
 
 		lspPro := widget.NewProgressBarInfinite()
 		localSinglePolicySyncBar = container.NewVBox(lspPro)
@@ -112,14 +113,14 @@ func GetBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 			targetPathBind,
 			&config.SystemConfigCache.Cache.LocalBatchSync.TargetPath))
 
-		syncPolicyRunningStatusComp := getPolicyStatusLabel(true)
+		syncPolicyRunningStatusComp := getPolicyStatusLabel(true, false)
 
 		lbspPro := widget.NewProgressBarInfinite()
 		localBatchPolicySyncBar = container.NewVBox(lbspPro)
 
 		localBatchStartButton = getStartLocalBatchButton()
 
-		differecnButton := getDiffAnalysisButton()
+		diffAnalysisButton = getDiffAnalysisButton()
 		progressBox = container.NewVBox()
 		localBatchPolicySyncBox = container.NewVBox()
 		localBatchSyncPolicyComponent = getBatchSyncPolicyBtn(win, false)
@@ -131,7 +132,7 @@ func GetBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 				syncPolicyRunningStatusComp,
 			),
 			localBatchStartButton,
-			differecnButton,
+			diffAnalysisButton,
 			localBatchSyncPolicyComponent,
 			progressBox,
 			localBatchPolicySyncBox,
@@ -141,16 +142,13 @@ func GetBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 	return localBatchSyncComponent
 }
 
-func getPolicyStatusLabel(isBatch bool) *fyne.Container {
-	var syncPolicyRunningStatus binding.ExternalBool
-	if isBatch {
-		syncPolicyRunningStatus = binding.BindBool(&config.SystemConfigCache.Cache.LocalBatchSync.SyncPolicy.PolicySwitch)
-	} else {
-		syncPolicyRunningStatus = binding.BindBool(&config.SystemConfigCache.Cache.LocalSingleSync.SyncPolicy.PolicySwitch)
-	}
+func getPolicyStatusLabel(isBatch bool, isRemote bool) *fyne.Container {
+	syncPolicy := config.SystemConfigCache.GetSyncPolicy(isBatch, isRemote)
+	t := binding.NewBool()
+	t.Set(syncPolicy.PolicySwitch)
 	return container.New(layout.NewHBoxLayout(),
 		widget.NewLabel("Sync Policy Running : "),
-		widget.NewLabelWithData(binding.BoolToString(syncPolicyRunningStatus)),
+		widget.NewLabelWithData(binding.BoolToString(t)),
 	)
 }
 

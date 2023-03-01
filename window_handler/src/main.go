@@ -8,7 +8,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"net"
 	"net/url"
-	"os"
 	"window_handler/Qlog"
 	"window_handler/common"
 	"window_handler/config"
@@ -24,7 +23,7 @@ var topWindow fyne.Window
 
 func main() {
 	worker.GetPartitionsInfo()
-	os.Setenv("FYNE_FONT", "msyh.ttc")
+	//os.Setenv("FYNE_FONT", "msyh.ttc")
 	Qlog.MakeLogger()
 	common.InitCoroutinesPool()
 	worker.LoadWorkerFactory()
@@ -51,7 +50,6 @@ func startGUI() {
 	w := a.NewWindow("QNQ Sync " + config.SystemConfigCache.Value().Version)
 	topWindow = w
 	w.SetMaster()
-
 	content := container.NewMax()
 	title := widget.NewLabel("Component name")
 	intro := widget.NewLabel("An introduction would probably go\nhere, as well as a")
@@ -84,8 +82,8 @@ func startGUI() {
 		split.Offset = 0.2
 		w.SetContent(split)
 	}
+	navigations.SetMainWin(&w)
 	w.Resize(fyne.NewSize(config.WindowWidth, config.WindowHeight))
-
 	w.ShowAndRun()
 }
 

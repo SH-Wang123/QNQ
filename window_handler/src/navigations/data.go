@@ -2,11 +2,16 @@ package navigations
 
 import (
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/dialog"
 	"time"
 	"window_handler/config"
 )
 
 const isDev = true
+
+var mainWin *fyne.Window
+var syncErrorDialog dialog.Dialog
+var syncErrorDialogOK = false
 
 var timeCycleMap = make(map[string]time.Duration)
 var dayCycleMap = make(map[string]time.Weekday)
@@ -91,7 +96,7 @@ var (
 			true,
 		},
 		"remoteSingleSync": {
-			"Remote Single sync",
+			"Remote Single Sync",
 			"Click start button to begin sync.",
 			GetRemoteSingleComponent,
 			true,
