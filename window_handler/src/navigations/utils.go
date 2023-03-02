@@ -290,11 +290,22 @@ func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, win fyne.Window) *wid
 				tem := false
 				if configCache.PolicySwitch {
 					if configCache.PeriodicSync.Enable {
-						worker.StartPeriodicSync(
+						worker.StartPolicySync(
 							time.Duration(configCache.PeriodicSync.Rate)*configCache.PeriodicSync.Cycle,
 							&tem,
 							isBatchSync,
 							isRemoteSync,
+							true,
+						)
+					}
+					if configCache.TimingSync.Enable {
+						nextTime := worker.GetNextTimeFromConfig(isBatchSync, isRemoteSync)
+						worker.StartPolicySync(
+							nextTime,
+							&tem,
+							isBatchSync,
+							isRemoteSync,
+							false,
 						)
 					}
 				}

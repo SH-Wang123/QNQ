@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+	"window_handler/config"
 )
 
 func OpenFile(filePath string, createFile bool) (*os.File, error) {
@@ -236,4 +237,110 @@ func GetSuitableCapacityStr(c uint64) string {
 		ret = fmt.Sprintf("%vGB", c/uint64(GB))
 	}
 	return ret
+}
+
+func GetNextSyncTime(dayArray [7]bool, min uint8, hour uint8) time.Duration {
+	var everyDayFlag = true
+	var subs [7]int
+	for i := 0; i < len(dayArray); i++ {
+		value := dayArray[i]
+		everyDayFlag = everyDayFlag && value
+		if value {
+			subs[i] = i - int(time.Now().Weekday())
+		} else {
+			subs[i] = -10
+		}
+	}
+	hourSub := int(hour) - time.Now().Hour()
+	minSub := int(min) - time.Now().Minute()
+	if everyDayFlag {
+		return GetTimeSum(0, hourSub, minSub)
+	} else {
+		nextDay := getClosetDaySub(subs, minSub, hourSub)
+		return GetTimeSum(nextDay, hourSub, minSub)
+	}
+}
+
+func GetTimeSum(daySub int, hourSub int, minSub int) time.Duration {
+	var retTime time.Duration
+
+	if daySub < 0 {
+		daySub = daySub + 7
+	}
+
+	if hourSub < 0 {
+		hourSub = hourSub + 24
+	}
+
+	if minSub < 0 {
+		minSub = minSub + 60
+	}
+
+	retTime = retTime + time.Duration(daySub*int(time.Hour*24))
+	retTime = retTime + time.Duration(hourSub*int(time.Hour))
+	retTime = retTime + time.Duration(minSub*int(time.Minute))
+	return retTime
+}
+
+func GetNextTimeFromConfig(isBatchSync bool, isRemoteSync bool) time.Duration {
+	configCache := config.SystemConfigCache.GetSyncPolicy(isBatchSync, isRemoteSync)
+	return GetNextSyncTime(
+		configCache.TimingSync.Days,
+		configCache.TimingSync.Minute,
+		configCache.TimingSync.Hour,
+	)
+}
+
+// getClosetDaySub 比较日期差，获取最近的那个日期
+func getClosetDaySub(subs [7]int, minSub int, hourSub int) int {
+	shift := false
+	if (hourSub == 0 && minSub < 0) || hourSub < 0 {
+		shift = true
+	}
+	var minNum = getMinTimeSubNum(&subs)
+	var secondNum = getMinTimeSubNum(&subs)
+
+	if shift {
+		return secondNum
+	}
+	return minNum
+}
+
+// getMinNum 获取最小的时间差数字（正数：返回最小值，负数：返回最大值）
+func getMinTimeSubNum(subs *[7]int) int {
+	var minNum = subs[0]
+	var minIndex = -1
+	for i := 0; i < len(subs); i++ {
+		if subs[i] == -10 {
+			continue
+		} else if minNum == -10 {
+			minNum = subs[i]
+		}
+		if subs[i] == 0 {
+			minNum = subs[i]
+			minIndex = i
+			subs[i] = -10
+			break
+		}
+		if subs[i] > 0 {
+			if minNum < 0 {
+				minNum = subs[i]
+				minIndex = i
+			} else if minNum > subs[i] {
+				minNum = subs[i]
+				minIndex = i
+
+			}
+		} else if subs[i] < minNum {
+			if minNum > 0 {
+				continue
+			}
+			minNum = subs[i]
+			minIndex = i
+		}
+	}
+	if minIndex != -1 {
+		subs[minIndex] = -10
+	}
+	return minNum
 }

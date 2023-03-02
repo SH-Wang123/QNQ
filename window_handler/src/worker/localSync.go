@@ -10,8 +10,16 @@ import (
 )
 
 var batchSyncErrorCache = make([]SyncFileError, 0)
-var BatchSyncPolicyRunFlag = false
-var SingleSyncPolicyRunFlag = false
+var (
+	PeriodicLocalBatchTicker   *time.Ticker
+	PeriodicLocalSingleTicker  *time.Ticker
+	PeriodicRemoteBatchTicker  *time.Ticker
+	PeriodicRemoteSingleTicker *time.Ticker
+	TimingLocalBatchTicker     *time.Ticker
+	TimingLocalSingleTicker    *time.Ticker
+	TimingRemoteBatchTicker    *time.Ticker
+	TimingRemoteSingleTicker   *time.Ticker
+)
 
 func NewLocalSingleWorker(sourceFile *os.File, targetFile *os.File) *common.QWorker {
 	return &common.QWorker{
@@ -110,31 +118,43 @@ func SyncBatchFileTree(node *FileNode, startPath string) {
 	}
 }
 
-func PeriodicLocalBatchSync() {
-	if config.SystemConfigCache.Value().LocalBatchSync.SyncPolicy.PolicySwitch {
-		common.SetLBSPRunning()
-		if common.LocalBatchPolicyRunningFlag {
-			return
-		}
-		InitFileNode(true, false)
-		DoneFileNum = 0.0
-		TotalFileNum = 0.0
-		SyncBatchFileTree(LocalBSFileNode, config.SystemConfigCache.Cache.LocalBatchSync.TargetPath)
-		common.SetLBSPStop()
-	} else {
+// LocalBatchSyncOneTime 直接读取配置文件，无需参数
+func LocalBatchSyncOneTime() {
+	common.SendSignal2GWChannel(common.LOCAL_BATCH_POLICY_RUNNING)
+	if common.LocalBatchPolicyRunningFlag {
 		return
+	}
+	InitFileNode(true, false)
+	DoneFileNum = 0.0
+	TotalFileNum = 0.0
+	SyncBatchFileTree(LocalBSFileNode, config.SystemConfigCache.Cache.LocalBatchSync.TargetPath)
+	common.SendSignal2GWChannel(common.LOCAL_BATCH_POLICY_STOP)
+}
+
+// LocalSingleSyncOneTime 直接读取配置文件，无需参数
+func LocalSingleSyncOneTime() {
+	common.SendSignal2GWChannel(common.LOCAL_SINGLE_POLICY_RUNNING)
+	node := GetSingleFileNode(config.SystemConfigCache.Cache.LocalSingleSync.SourcePath)
+	sf, _ := OpenFile(node.AbstractPath, false)
+	tf := getSingleTargetFile(sf, config.SystemConfigCache.Cache.LocalSingleSync.TargetPath)
+	worker := NewLocalSingleWorker(sf, tf)
+	common.GetCoroutinesPool().Submit(worker.Execute)
+	common.SendSignal2GWChannel(common.LOCAL_SINGLE_POLICY_STOP)
+}
+
+func PeriodicLocalBatchSync() {
+	if config.SystemConfigCache.Cache.LocalBatchSync.SyncPolicy.PeriodicSync.Enable {
+		if config.SystemConfigCache.Value().LocalBatchSync.SyncPolicy.PolicySwitch {
+			LocalBatchSyncOneTime()
+		}
 	}
 }
 
 func PeriodicLocalSingleSync() {
-	if config.SystemConfigCache.Cache.LocalSingleSync.SyncPolicy.PolicySwitch {
-		node := GetSingleFileNode(config.SystemConfigCache.Cache.LocalSingleSync.SourcePath)
-		sf, _ := OpenFile(node.AbstractPath, false)
-		tf := getSingleTargetFile(sf, config.SystemConfigCache.Cache.LocalSingleSync.TargetPath)
-		worker := NewLocalSingleWorker(sf, tf)
-		common.GetCoroutinesPool().Submit(worker.Execute)
-	} else {
-		return
+	if config.SystemConfigCache.Cache.LocalSingleSync.SyncPolicy.PeriodicSync.Enable {
+		if config.SystemConfigCache.Cache.LocalSingleSync.SyncPolicy.PolicySwitch {
+			LocalSingleSyncOneTime()
+		}
 	}
 }
 
@@ -145,23 +165,46 @@ func PeriodicRemoteSingleSync() {
 }
 
 func TimingLocalBatchSync() {
+	if config.SystemConfigCache.Cache.LocalBatchSync.SyncPolicy.TimingSync.Enable {
+		if config.SystemConfigCache.Cache.LocalBatchSync.SyncPolicy.PolicySwitch {
+			LocalBatchSyncOneTime()
+		}
+	}
+
+	if config.SystemConfigCache.Cache.LocalBatchSync.SyncPolicy.TimingSync.Enable {
+		if config.SystemConfigCache.Cache.LocalBatchSync.SyncPolicy.PolicySwitch {
+			nextTime := GetNextTimeFromConfig(true, false)
+			if nextTime == 0 {
+				time.Sleep(61 * time.Second)
+			}
+			nextTime = GetNextTimeFromConfig(true, false)
+			notEnd := false
+			StartPolicySync(nextTime, &notEnd, true, false, false)
+		}
+	}
 
 }
 
 func TimingLocalSingleSync() {
+	if config.SystemConfigCache.Cache.LocalSingleSync.SyncPolicy.TimingSync.Enable {
+		LocalSingleSyncOneTime()
+	}
 
+	if config.SystemConfigCache.Cache.LocalSingleSync.SyncPolicy.TimingSync.Enable {
+		nextTime := GetNextTimeFromConfig(false, false)
+		notEnd := false
+		StartPolicySync(nextTime, &notEnd, false, false, false)
+	}
 }
 
 func TimingRemoteBatchSync() {
-
 }
 
 func TimingRemoteSingleSync() {
-
 }
 
-func TickerWorker(duration time.Duration, notEnd *bool, workerFunc func()) {
-	ticker := time.NewTicker(duration)
+func TickerWorker(ticker *time.Ticker, duration time.Duration, notEnd *bool, workerFunc func()) {
+	ticker = time.NewTicker(duration)
 	for {
 		select {
 		case <-ticker.C:
@@ -174,21 +217,12 @@ func TickerWorker(duration time.Duration, notEnd *bool, workerFunc func()) {
 	}
 }
 
-func StartPeriodicSync(duration time.Duration, notEnd *bool, isBatch bool, isRemote bool) {
-	if isBatch {
-		if isRemote {
-			go TickerWorker(duration, notEnd, PeriodicRemoteBatchSync)
-		} else {
-			go TickerWorker(duration, notEnd, PeriodicLocalBatchSync)
-		}
-
-	} else {
-		if isRemote {
-			go TickerWorker(duration, notEnd, PeriodicRemoteSingleSync)
-		} else {
-			go TickerWorker(duration, notEnd, PeriodicLocalSingleSync)
-		}
+func StartPolicySync(duration time.Duration, notEnd *bool, isBatch bool, isRemote bool, isPeriodic bool) {
+	ticker, workerFunc := GetTicker(isBatch, isRemote, isPeriodic)
+	if ticker != nil {
+		ticker.Stop()
 	}
+	go TickerWorker(ticker, duration, notEnd, workerFunc)
 }
 
 func LocalSyncSingleFileGUI() bool {
@@ -272,4 +306,30 @@ func AddBatchSyncError(absPath string, reason string) {
 		Reason:  reason,
 	}
 	batchSyncErrorCache = append(batchSyncErrorCache, node)
+}
+
+func GetTicker(isBatch bool, isRemote bool, isPeriodic bool) (*time.Ticker, func()) {
+	if isPeriodic {
+		if isRemote {
+			if isBatch {
+				return PeriodicRemoteBatchTicker, PeriodicRemoteBatchSync
+			}
+			return PeriodicRemoteSingleTicker, PeriodicRemoteSingleSync
+		}
+		if isBatch {
+			return PeriodicLocalBatchTicker, PeriodicLocalBatchSync
+		}
+		return PeriodicLocalSingleTicker, PeriodicLocalSingleSync
+	} else {
+		if isRemote {
+			if isBatch {
+				return TimingRemoteBatchTicker, TimingRemoteBatchSync
+			}
+			return TimingRemoteSingleTicker, TimingRemoteSingleSync
+		}
+		if isBatch {
+			return TimingLocalBatchTicker, TimingLocalBatchSync
+		}
+		return TimingLocalSingleTicker, TimingLocalSingleSync
+	}
 }

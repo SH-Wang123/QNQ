@@ -18,17 +18,10 @@ var gwLock sync.RWMutex
 var GWChannel = make(chan int)
 
 var LocalBatchPolicyRunningFlag = false
+var LocalSinglePolicyRunningFlag = false
 
-// SetLBSPRunning set local batch sync policy running
-func SetLBSPRunning() {
+func SendSignal2GWChannel(signal int) {
 	gwLock.Lock()
 	defer gwLock.Unlock()
-	GWChannel <- LOCAL_BATCH_POLICY_RUNNING
-}
-
-// SetLBSPStop set local batch sync policy stop
-func SetLBSPStop() {
-	gwLock.Lock()
-	defer gwLock.Unlock()
-	GWChannel <- LOCAL_BATCH_POLICY_STOP
+	GWChannel <- signal
 }
