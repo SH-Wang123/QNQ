@@ -7,9 +7,9 @@ import (
 
 const GET_INFO_FAILURE = "Getting information failure"
 const NOT_SET_STR = "Not Set"
-const version = "V0.0.3"
+const version = "V0.0.3.6"
 const WindowHeight = 600
-const WindowWidth = 600
+const WindowWidth = 900
 
 var SystemConfigCache cacheConfig
 

@@ -306,7 +306,7 @@ func getClosetDaySub(subs [7]int, minSub int, hourSub int) int {
 	return minNum
 }
 
-// getMinNum 获取最小的时间差数字（正数：返回最小值，负数：返回最大值）
+// getMinNum 获取最小的时间差数字（正数：返回最小值，负数：返回最大值，不比较-10这个特殊数字）
 func getMinTimeSubNum(subs *[7]int) int {
 	var minNum = subs[0]
 	var minIndex = -1
