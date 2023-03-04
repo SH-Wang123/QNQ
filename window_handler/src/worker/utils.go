@@ -227,14 +227,15 @@ func FloatRound(f float64, n int) float64 {
 
 func GetSuitableCapacityStr(c uint64) string {
 	var ret string
-	if c/uint64(GB) == 0 {
-		if c/uint64(MB) == 0 {
-			ret = fmt.Sprintf("%vKB", c/uint64(KB))
+	floatC := float64(c)
+	if floatC/float64(GB) < 1 {
+		if floatC/float64(MB) < 1 {
+			ret = fmt.Sprintf("%vKB", FloatRound(floatC/float64(KB), 2))
 		} else {
-			ret = fmt.Sprintf("%vMB", c/uint64(MB))
+			ret = fmt.Sprintf("%vMB", FloatRound(floatC/float64(MB), 2))
 		}
 	} else {
-		ret = fmt.Sprintf("%vGB", c/uint64(GB))
+		ret = fmt.Sprintf("%vGB", FloatRound(floatC/float64(GB), 2))
 	}
 	return ret
 }

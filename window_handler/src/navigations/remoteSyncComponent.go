@@ -17,11 +17,16 @@ var (
 	rscOnce             sync.Once
 )
 
-func GetRemoteSyncComponent(_ fyne.Window) fyne.CanvasObject {
+func GetRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
 	rscOnce.Do(func() {
 		bindingIp := binding.NewString()
 		bindingIp.Set(config.SystemConfigCache.Value().QnqSTarget.Ip)
 		ipAddress := widget.NewEntryWithData(bindingIp)
+		ipAdressComp := container.New(
+			layout.NewFormLayout(),
+			widget.NewLabel("IP:"),
+			ipAddress,
+		)
 
 		status := binding.NewBool()
 		status.Set(network.ConnectStauts)
@@ -33,73 +38,82 @@ func GetRemoteSyncComponent(_ fyne.Window) fyne.CanvasObject {
 		errLabel := widget.NewLabel("Connect failed !!!")
 		okLabel := widget.NewLabel("Connect OK !!!")
 		errLabel.TextStyle = fyne.TextStyle{}
+
+		localPathBind := getBindString(config.SystemConfigCache.Value().QnqSTarget.LocalPath)
+		localFilePath := loadValue2Label("Local path:", localPathBind)
+		localPathComp := container.NewHBox(
+			localFilePath,
+			makeOpenFileBtn("Open",
+				win,
+				localPathBind,
+				&config.SystemConfigCache.Cache.QnqSTarget.LocalPath),
+		)
+		remotePathBind := getBindString(config.SystemConfigCache.Value().QnqSTarget.RemotePath)
+		remoteFilePathInput := widget.NewEntryWithData(remotePathBind)
+		remotePathComp := container.New(
+			layout.NewFormLayout(),
+			widget.NewLabel("Remote path:"),
+			remoteFilePathInput,
+		)
+
+		saveButton := widget.NewButton("Save IP & Remote path", func() {
+			ret := checkIpPing(ipAddress.Text, errLabel, okLabel)
+			if ret {
+				config.SystemConfigCache.Cache.QnqSTarget.Ip = ipAddress.Text
+			}
+			config.SystemConfigCache.Cache.QnqSTarget.RemotePath = remoteFilePathInput.Text
+			config.SystemConfigCache.NotifyAll()
+		})
+		startButton := widget.NewButton("Start", func() {
+			qSender := worker.NewRemoteSyncSender()
+			qSender.PrivateVariableMap["local_file_path"] = config.SystemConfigCache.Value().QnqSTarget.LocalPath
+			go qSender.ExecuteFunc(qSender)
+		})
+		connectButton := getConnectQTargetButton()
+		remoteSingleSyncPolicyComponent := getSingleSyncPolicyBtn(win, true)
+		testButton := &widget.Button{
+			Text:       "Test connect",
+			Importance: widget.WarningImportance,
+			OnTapped: func() {
+				ret := checkIpPing(ipAddress.Text, errLabel, okLabel)
+				if !ret {
+					batchDisable(saveButton, startButton, connectButton, remoteSingleSyncPolicyComponent)
+				} else {
+					batchEnable(saveButton, startButton, connectButton, remoteSingleSyncPolicyComponent)
+				}
+			},
+		}
 		remoteSyncComponent = container.NewVBox(
+			localPathComp,
+			remotePathComp,
+			ipAdressComp,
 			connectedStatusComponent,
-			ipAddress,
 			errLabel,
 			okLabel,
-			widget.NewButton("Test connect", func() {
-				ret := network.TestPing(ipAddress.Text)
-				if !ret {
-					errLabel.Show()
-					okLabel.Hide()
-				} else {
-					errLabel.Hide()
-					okLabel.Show()
-				}
-			}),
-			widget.NewButton("Save", func() {
-				ret := network.TestPing(ipAddress.Text)
-				if !ret {
-					errLabel.Show()
-					okLabel.Hide()
-				} else {
-					errLabel.Hide()
-					okLabel.Show()
-					config.SystemConfigCache.Cache.QnqSTarget.Ip = ipAddress.Text
-					config.SystemConfigCache.NotifyAll()
-				}
-			}),
-			getConnectQTargetButton(),
+			testButton,
+			saveButton,
+			connectButton,
+			startButton,
+			remoteSingleSyncPolicyComponent,
 		)
+
 		errLabel.Hide()
 		okLabel.Hide()
+		batchDisable(saveButton, startButton, connectButton, remoteSingleSyncPolicyComponent)
 	})
 	return remoteSyncComponent
 }
 
-func GetRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
-
-	localPathBind := getBindString(config.SystemConfigCache.Value().QnqSTarget.LocalPath)
-	localFilePath := widget.NewLabelWithData(localPathBind)
-
-	startButton := widget.NewButton("Start Sync", func() {
-		qSender := worker.NewRemoteSyncSender()
-		qSender.PrivateVariableMap["file_path"] = config.SystemConfigCache.Value().QnqSTarget.LocalPath
-		go qSender.ExecuteFunc(qSender)
-	})
-	filePathComponent := container.New(layout.NewHBoxLayout(),
-		localFilePath,
-		makeOpenFolderBtn("Open",
-			win,
-			localPathBind,
-			&config.SystemConfigCache.Cache.QnqSTarget.LocalPath),
-	)
-	remoteSingleSyncPolicyComponent := getSingleSyncPolicyBtn(win, true)
-	return container.NewVBox(
-		filePathComponent,
-		startButton,
-		remoteSingleSyncPolicyComponent,
-	)
-}
-
-func checkIpPing(ip string, errLabel *widget.Label) {
+func checkIpPing(ip string, errLabel *widget.Label, okLabel *widget.Label) bool {
 	ret := network.TestPing(ip)
 	if !ret {
+		okLabel.Hide()
 		errLabel.Show()
 	} else {
 		errLabel.Hide()
+		okLabel.Show()
 	}
+	return ret
 }
 
 func getConnectQTargetButton() *widget.Button {

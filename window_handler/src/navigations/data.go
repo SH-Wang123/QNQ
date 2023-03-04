@@ -90,14 +90,14 @@ var (
 			true,
 		},
 		"remoteSync": {
-			"Remote",
-			"QNQ Target Info",
-			GetRemoteSyncComponent,
+			"Remote Single Sync",
+			"Click start button to begin sync.",
+			GetRemoteSingleComponent,
 			true,
 		},
 		"remoteSingleSync": {
 			"Remote Single Sync",
-			"Click start button to begin sync.",
+			"Click start button to begin sync.\nPlease test the connection first!",
 			GetRemoteSingleComponent,
 			true,
 		},

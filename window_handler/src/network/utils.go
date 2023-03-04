@@ -57,6 +57,9 @@ func readBytes(conn net.Conn) (bytes.Buffer, error) {
 }
 
 func write(conn net.Conn, content string) (int, error) {
+	if conn == nil {
+		return -1, nil
+	}
 	log.Printf("send %v : %v\n", conn.RemoteAddr(), content)
 	var bytebuf bytes.Buffer
 	bytebuf.WriteString(content)

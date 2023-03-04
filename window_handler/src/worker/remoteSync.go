@@ -67,15 +67,15 @@ func receiverDeconstruct(w *common.QWorker) {
 }
 
 func SendSingleFile(s *common.QSender) {
-	filePath := fmt.Sprintf("%v", s.PrivateVariableMap["file_path"])
-	if filePath == "" {
+	localFilePath := fmt.Sprintf("%v", s.PrivateVariableMap["local_file_path"])
+	if localFilePath == "" || localFilePath == "remoteFilePath" {
 		log.Printf("SendSingleFile QSender SN : {%v}, get a null file path", s.SN)
 		return
 	}
 	var msgPrefix = dataMsgPreFix + s.SN
-	f, err := os.Open(filePath)
+	f, err := os.Open(localFilePath)
 	if err != nil {
-		log.Printf("Open %v err : %v", filePath, err.Error())
+		log.Printf("Open %v err : %v", localFilePath, err.Error())
 		return
 	}
 	defer func(f *os.File) {
@@ -86,7 +86,7 @@ func SendSingleFile(s *common.QSender) {
 	}(f)
 	workerSignal := common.RemoteSingleSyncType + s.SN + "0"
 	_, _ = network.WriteStrToQTarget(workerSignal)
-	network.WriteStrToQTarget(network.LoadContent(msgPrefix, config.SystemConfigCache.Value().QnqSTarget.LocalPath))
+	network.WriteStrToQTarget(network.LoadContent(msgPrefix, config.SystemConfigCache.Value().QnqSTarget.RemotePath))
 	buf := make([]byte, 4094)
 	var msgfixBytes = []byte{'1', '1'}
 	for {

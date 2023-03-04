@@ -17,18 +17,31 @@ func GetPartitionsInfo() {
 		moreInfo, _ := disk.Usage(info.Device)
 		totalStr := GetSuitableCapacityStr(moreInfo.Total)
 		freeStr := GetSuitableCapacityStr(moreInfo.Free)
-		var p = Partition{
-			Name:         info.Device,
-			FsType:       info.Fstype,
-			TotalSize:    moreInfo.Total,
-			TotalSizeStr: totalStr,
-			FreeSizeStr:  freeStr,
-			FreeSize:     moreInfo.Free,
-			UsedPercent:  moreInfo.UsedPercent / 100,
+		for i, _ := range DiskPartitionsCache {
+			if DiskPartitionsCache[i].Name == info.Device {
+				DiskPartitionsCache[i].FreeSize = moreInfo.Free
+				DiskPartitionsCache[i].FreeSizeStr = freeStr
+				DiskPartitionsCache[i].UsedPercent = moreInfo.UsedPercent / 100
+				break
+			}
 		}
-		partitions = append(partitions, p)
+
+		if DiskPartitionsCache == nil {
+			var p = Partition{
+				Name:         info.Device,
+				FsType:       info.Fstype,
+				TotalSize:    moreInfo.Total,
+				TotalSizeStr: totalStr,
+				FreeSizeStr:  freeStr,
+				FreeSize:     moreInfo.Free,
+				UsedPercent:  moreInfo.UsedPercent / 100,
+			}
+			partitions = append(partitions, p)
+		}
 	}
-	DiskPartitionsCache = partitions
+	if DiskPartitionsCache == nil {
+		DiskPartitionsCache = partitions
+	}
 }
 
 func TestDiskSpeed(bufferSize CapacityUnit, totalSize CapacityUnit, drive string) (writeSpeed int, readSpeed int) {
