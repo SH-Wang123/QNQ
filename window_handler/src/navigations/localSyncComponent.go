@@ -4,6 +4,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 	"log"
@@ -89,7 +90,7 @@ func GetSingleLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 			sourcePathComponent,
 			targetPathComponent,
 			syncPolicyRunningStatusComp,
-			getStartLocalSingleButton(),
+			getStartLocalSingleButton(win),
 			localSingleSyncPolicyComponent,
 		)
 	})
@@ -118,7 +119,7 @@ func GetBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 		lbspPro := widget.NewProgressBarInfinite()
 		localBatchPolicySyncBar = container.NewVBox(lbspPro)
 
-		localBatchStartButton = getStartLocalBatchButton()
+		localBatchStartButton = getStartLocalBatchButton(win)
 
 		diffAnalysisButton = getDiffAnalysisButton()
 		progressBox = container.NewVBox()
@@ -152,8 +153,13 @@ func getPolicyStatusLabel(isBatch bool, isRemote bool) *fyne.Container {
 	)
 }
 
-func getStartLocalBatchButton() *widget.Button {
+func getStartLocalBatchButton(win fyne.Window) *widget.Button {
 	button := widget.NewButton("Start", func() {
+		if config.SystemConfigCache.Cache.LocalBatchSync.TargetPath == config.NOT_SET_STR ||
+			config.SystemConfigCache.Cache.LocalBatchSync.SourcePath == config.NOT_SET_STR {
+			dialog.ShowInformation("Error", "Please set source and target path!", win)
+			return
+		}
 		progressBar = getTaskProgressBar()
 		progressBox.Add(progressBar)
 		//TODO 优化协程池
@@ -163,8 +169,13 @@ func getStartLocalBatchButton() *widget.Button {
 	return button
 }
 
-func getStartLocalSingleButton() *widget.Button {
+func getStartLocalSingleButton(win fyne.Window) *widget.Button {
 	button := widget.NewButton("Start", func() {
+		if config.SystemConfigCache.Cache.LocalSingleSync.TargetPath == config.NOT_SET_STR ||
+			config.SystemConfigCache.Cache.LocalSingleSync.SourcePath == config.NOT_SET_STR {
+			dialog.ShowInformation("Error", "Please set source and target path!", win)
+			return
+		}
 		go worker.LocalSyncSingleFileGUI()
 	})
 	return button
