@@ -7,6 +7,10 @@ const (
 )
 
 const (
+	URL_HRED = "http://"
+)
+
+const (
 	VARIANCE_ROOT = iota
 	VARIANCE_ADD
 	VARIANCE_EDIT
@@ -22,6 +26,12 @@ const (
 	GB                = 1024 * MB
 	TB                = 1024 * GB
 	PB                = 1024 * TB
+)
+
+const (
+	GET_FILE_ROOT_URI = "/fileRootMap"
+	GET_DISK_INFO_URI = "/disk/info"
+	TEST_CONNECT      = "/debug/connect"
 )
 
 var fileSeparator = getFileSeparator()
@@ -55,13 +65,11 @@ type Disk struct {
 }
 
 type Partition struct {
-	Name         string
-	FsType       string
-	TotalSizeStr string
-	TotalSize    uint64
-	FreeSize     uint64
-	FreeSizeStr  string
-	UsedPercent  float64
+	Name         string  `json:"name"`
+	FsType       string  `json:"fs_type"`
+	TotalSizeStr string  `json:"total_size_str"`
+	FreeSizeStr  string  `json:"free_size_str"`
+	UsedPercent  float64 `json:"used_percent"`
 }
 
 func getFileSeparator() string {

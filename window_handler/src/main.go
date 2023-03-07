@@ -14,6 +14,7 @@ import (
 	"window_handler/navigations"
 	"window_handler/network"
 	"window_handler/request"
+	_ "window_handler/rest"
 	"window_handler/worker"
 )
 

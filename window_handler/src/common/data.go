@@ -78,3 +78,18 @@ type Subject interface {
 	Deregister(Observer)
 	NotifyAll()
 }
+
+// ------------------------------ rest entry
+const QNQ_TARGET_REST_PORT = ":9915"
+
+type QResponse struct {
+	Code int `json:"code"`
+	Data any `json:"data"`
+}
+
+func NewQResponse(code int, data any) *QResponse {
+	return &QResponse{
+		Code: code,
+		Data: data,
+	}
+}

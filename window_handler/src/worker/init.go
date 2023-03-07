@@ -29,17 +29,18 @@ func InitFileNode(initAll bool, async bool) {
 		VarianceType:    VARIANCE_ROOT,
 	}
 	if async {
-		go GetFileTree(LocalBSFileNode)
+		go GetFileTree(LocalBSFileNode, true)
 	} else {
-		GetFileTree(LocalBSFileNode)
+		GetFileTree(LocalBSFileNode, true)
 	}
 }
 
 // GetFilePath BFS
-func GetFileTree(fNode *FileNode) {
+func GetFileTree(fNode *FileNode, isRecurrence bool) {
 	f, _ := OpenFile(fNode.AbstractPath, false)
 	allChild, err := f.Readdir(-1)
 	if err != nil {
+		fNode.IsDirectory = false
 		log.Printf("open dir error, path : %v, error : %v", fNode.AbstractPath, err)
 		return
 	}
@@ -55,12 +56,16 @@ func GetFileTree(fNode *FileNode) {
 				VarianceType:    VARIANCE_EDIT,
 			}
 			fNode.ChildrenNodeList = append(fNode.ChildrenNodeList, &childFileNode)
-			if child.IsDir() {
-				GetFileTree(&childFileNode)
-			} else {
-				TotalFileNum++
+			if isRecurrence {
+				if child.IsDir() {
+					GetFileTree(&childFileNode, isRecurrence)
+				} else {
+					TotalFileNum++
+				}
 			}
 		}
+	} else {
+		fNode.IsDirectory = false
 	}
 	defer CloseFile(f)
 }

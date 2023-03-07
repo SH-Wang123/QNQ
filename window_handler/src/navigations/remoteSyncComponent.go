@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"image/color"
 	"sync"
 	"window_handler/config"
 	"window_handler/network"
@@ -35,9 +36,7 @@ func GetRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
 			widget.NewLabelWithData(binding.BoolToString(status)),
 		)
 
-		errLabel := widget.NewLabel("Connect failed !!!")
-		okLabel := widget.NewLabel("Connect OK !!!")
-		errLabel.TextStyle = fyne.TextStyle{}
+		infoLabel := widget.NewTextGridFromString("")
 
 		localPathBind := getBindString(config.SystemConfigCache.Value().QnqSTarget.LocalPath)
 		localFilePath := loadValue2Label("Local path:", localPathBind)
@@ -57,7 +56,7 @@ func GetRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
 		)
 
 		saveButton := widget.NewButton("Save IP & Remote path", func() {
-			ret := checkIpPing(ipAddress.Text, errLabel, okLabel)
+			ret := checkTargetConnect(ipAddress.Text, infoLabel)
 			if ret {
 				config.SystemConfigCache.Cache.QnqSTarget.Ip = ipAddress.Text
 			}
@@ -75,7 +74,7 @@ func GetRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
 			Text:       "Test connect",
 			Importance: widget.WarningImportance,
 			OnTapped: func() {
-				ret := checkIpPing(ipAddress.Text, errLabel, okLabel)
+				ret := checkTargetConnect(ipAddress.Text, infoLabel)
 				if !ret {
 					batchDisable(saveButton, startButton, connectButton, remoteSingleSyncPolicyComponent)
 				} else {
@@ -88,8 +87,7 @@ func GetRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
 			remotePathComp,
 			ipAdressComp,
 			connectedStatusComponent,
-			errLabel,
-			okLabel,
+			infoLabel,
 			testButton,
 			saveButton,
 			connectButton,
@@ -97,23 +95,30 @@ func GetRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
 			remoteSingleSyncPolicyComponent,
 		)
 
-		errLabel.Hide()
-		okLabel.Hide()
+		infoLabel.Hide()
 		batchDisable(saveButton, startButton, connectButton, remoteSingleSyncPolicyComponent)
 	})
 	return remoteSyncComponent
 }
 
-func checkIpPing(ip string, errLabel *widget.Label, okLabel *widget.Label) bool {
-	ret := network.TestPing(ip)
-	if !ret {
-		okLabel.Hide()
-		errLabel.Show()
-	} else {
-		errLabel.Hide()
-		okLabel.Show()
+func checkTargetConnect(ip string, infoLabel *widget.TextGrid) bool {
+	ping := network.TestPing(ip)
+	qnqRunning := worker.TestQnqTarget(ip)
+	var str = "\n"
+	if !ping {
+		str = str + "The network link is blocked! "
 	}
-	return ret
+	if !qnqRunning {
+		str = str + "Target machine not running QNQ!"
+	}
+	if str != "\n" {
+		infoLabel.SetText(str)
+		infoLabel.SetRowStyle(1, &widget.CustomTextGridStyle{FGColor: &color.NRGBA{R: 255, G: 0, B: 0, A: 255}, BGColor: color.White})
+		infoLabel.Show()
+	} else {
+		infoLabel.Hide()
+	}
+	return ping && qnqRunning
 }
 
 func getConnectQTargetButton() *widget.Button {

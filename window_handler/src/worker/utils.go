@@ -3,14 +3,17 @@ package worker
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"math/rand"
+	"net/http"
 	"os"
 	"regexp"
 	"strconv"
 	"time"
+	"window_handler/common"
 	"window_handler/config"
 )
 
@@ -228,12 +231,15 @@ func FloatRound(f float64, n int) float64 {
 func GetSuitableCapacityStr(c uint64) string {
 	var ret string
 	floatC := float64(c)
-	if floatC/float64(GB) < 1 {
+	gbNum := floatC / float64(GB)
+	if gbNum < 1 {
 		if floatC/float64(MB) < 1 {
 			ret = fmt.Sprintf("%vKB", FloatRound(floatC/float64(KB), 2))
 		} else {
 			ret = fmt.Sprintf("%vMB", FloatRound(floatC/float64(MB), 2))
 		}
+	} else if gbNum > 1024 {
+		ret = fmt.Sprintf("%vTB", FloatRound(floatC/float64(TB), 2))
 	} else {
 		ret = fmt.Sprintf("%vGB", FloatRound(floatC/float64(GB), 2))
 	}
@@ -344,4 +350,39 @@ func getMinTimeSubNum(subs *[7]int) int {
 		subs[minIndex] = -10
 	}
 	return minNum
+}
+
+func GetFileRootTree(root string) {
+
+}
+
+func getObjFromResponse(resp *http.Response, obj any) any {
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	qresponse := common.QResponse{}
+	err := json.Unmarshal(b, &qresponse)
+	if err != nil {
+		return nil
+	}
+	retJson, err := json.Marshal(qresponse.Data)
+	if err != nil {
+		return nil
+	}
+	err = json.Unmarshal(retJson, obj)
+	if err != nil {
+		return nil
+	}
+	return obj
+}
+
+func sendGet(url string, params ...map[string]string) (resp *http.Response, err error) {
+	var paramsStr = ""
+	for k, v := range params {
+		if paramsStr == "" {
+			paramsStr = fmt.Sprintf("?%s=%s", k, v)
+		} else {
+			paramsStr = paramsStr + fmt.Sprintf("&%s=%s", k, v)
+		}
+	}
+	return http.Get(url + paramsStr)
 }

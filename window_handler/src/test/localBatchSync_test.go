@@ -92,7 +92,7 @@ func TestPeriodicLocalBatchSync(t *testing.T) {
 		configCache.TargetPath = targetPath + testCase.startPath
 		configCache.SyncPolicy.PolicySwitch = true
 		configCache.SyncPolicy.PeriodicSync.Cycle = time.Minute
-		worker.StartPeriodicSync(time.Minute, &notEndFlag, true, false)
+		worker.StartPolicySync(time.Minute, &notEndFlag, true, false, true)
 		errorInfo := worker.GetBatchSyncError()
 		if len(errorInfo) == 0 {
 			t.Logf(batchFileSyncUTLog+"periodic policy case {%v} ok!!!  time: %v", testCase.prefixName, time.Now())

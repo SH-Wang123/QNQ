@@ -2,6 +2,7 @@ package worker
 
 import (
 	"github.com/shirou/gopsutil/disk"
+	"net/http"
 	"window_handler/common"
 )
 
@@ -19,7 +20,6 @@ func GetPartitionsInfo() {
 		freeStr := GetSuitableCapacityStr(moreInfo.Free)
 		for i, _ := range DiskPartitionsCache {
 			if DiskPartitionsCache[i].Name == info.Device {
-				DiskPartitionsCache[i].FreeSize = moreInfo.Free
 				DiskPartitionsCache[i].FreeSizeStr = freeStr
 				DiskPartitionsCache[i].UsedPercent = moreInfo.UsedPercent / 100
 				break
@@ -30,11 +30,9 @@ func GetPartitionsInfo() {
 			var p = Partition{
 				Name:         info.Device,
 				FsType:       info.Fstype,
-				TotalSize:    moreInfo.Total,
 				TotalSizeStr: totalStr,
 				FreeSizeStr:  freeStr,
-				FreeSize:     moreInfo.Free,
-				UsedPercent:  moreInfo.UsedPercent / 100,
+				UsedPercent:  FloatRound(moreInfo.UsedPercent/100, 4),
 			}
 			partitions = append(partitions, p)
 		}
@@ -63,4 +61,14 @@ func TestDiskSpeed(bufferSize CapacityUnit, totalSize CapacityUnit, drive string
 
 func getMb(size CapacityUnit) int {
 	return int(int64(size) / int64(MB))
+}
+
+func GetRemoteDiskInfo(ip string) *[]Partition {
+	r, err := http.Get(URL_HRED + ip + common.QNQ_TARGET_REST_PORT + GET_DISK_INFO_URI)
+	if err != nil {
+		return nil
+	}
+	var disks []Partition
+	getObjFromResponse(r, &disks)
+	return &disks
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"sync"
 	"window_handler/common"
@@ -108,4 +109,27 @@ func SendSingleFile(s *common.QSender) {
 	}
 	workerSignal = common.RemoteSingleSyncType + s.SN + "1"
 	_, _ = network.WriteStrToQTarget(workerSignal)
+}
+
+func GetRemoteFileRootMap(ip string, abstractPath string, anchorPointPath string) map[string][]string {
+	var params = make(map[string]string)
+	params["abstractPath"] = abstractPath
+	params["anchorPointPath"] = anchorPointPath
+	resp, err := sendGet(URL_HRED+ip+common.QNQ_TARGET_REST_PORT+GET_FILE_ROOT_URI, params)
+	if err != nil {
+		return nil
+	}
+	var ret = make(map[string][]string)
+	getObjFromResponse(resp, &ret)
+	return ret
+}
+
+func TestQnqTarget(ip string) bool {
+	resp, err := http.Get(URL_HRED + ip + common.QNQ_TARGET_REST_PORT + TEST_CONNECT)
+	if err != nil {
+		return false
+	}
+	var retStr string
+	getObjFromResponse(resp, &retStr)
+	return retStr == "ok"
 }

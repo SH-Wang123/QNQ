@@ -34,10 +34,10 @@ func NewLocalSingleWorker(sourceFile *os.File, targetFile *os.File) *common.QWor
 func FileNode2TreeMap(data *map[string][]string) {
 	datat := *data
 	datat[""] = append(datat[""], LocalBSFileNode.AbstractPath)
-	getFileTree(LocalBSFileNode, data)
+	GetFileTreeMap(LocalBSFileNode, data)
 }
 
-func getFileTree(node *FileNode, data *map[string][]string) {
+func GetFileTreeMap(node *FileNode, data *map[string][]string) {
 	datat := *data
 	if !node.IsDirectory {
 		return
@@ -50,7 +50,7 @@ func getFileTree(node *FileNode, data *map[string][]string) {
 			key = node.AnchorPointPath
 		}
 		datat[key] = append(datat[key], child.AnchorPointPath)
-		getFileTree(child, data)
+		GetFileTreeMap(child, data)
 	}
 }
 
