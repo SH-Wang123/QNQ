@@ -16,6 +16,9 @@ func GetPartitionsInfo() {
 
 	for _, info := range partitionsInfo {
 		moreInfo, _ := disk.Usage(info.Device)
+		if moreInfo == nil {
+			continue
+		}
 		totalStr := GetSuitableCapacityStr(moreInfo.Total)
 		freeStr := GetSuitableCapacityStr(moreInfo.Free)
 		for i, _ := range DiskPartitionsCache {
