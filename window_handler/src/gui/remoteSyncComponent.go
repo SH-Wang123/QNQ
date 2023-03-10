@@ -1,4 +1,4 @@
-package navigations
+package gui
 
 import (
 	"fyne.io/fyne/v2"
@@ -114,6 +114,7 @@ func checkTargetConnect(ip string, infoLabel *widget.TextGrid) bool {
 	if str != "\n" {
 		infoLabel.SetText(str)
 		infoLabel.SetRowStyle(1, &widget.CustomTextGridStyle{FGColor: &color.NRGBA{R: 255, G: 0, B: 0, A: 255}, BGColor: color.White})
+		infoLabel.Refresh()
 		infoLabel.Show()
 	} else {
 		infoLabel.Hide()

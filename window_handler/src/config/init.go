@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const CLI_FALG = false
+
 var LocalSystemInfo = systemInfo{
 	OS:              runtime.GOOS,
 	SystemFramework: runtime.GOARCH,

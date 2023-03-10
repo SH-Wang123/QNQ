@@ -5,6 +5,7 @@ need 64bit gcc
 2. `go get github.com/shirou/gopsutil`
 3. `go get github.com/yusufpapurcu/wmi`
 4. `go get -u github.com/gin-gonic/gin`
+5. `go get github.com/urfave/cli/v2`
 2. `go mod tidy`
 
 ## Build

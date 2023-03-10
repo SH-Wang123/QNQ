@@ -1,4 +1,4 @@
-package navigations
+package gui
 
 import (
 	"fmt"
