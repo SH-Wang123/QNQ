@@ -338,3 +338,12 @@ func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, win fyne.Window) *wid
 		batchRefresh(usePeriodicSyncCheck, useTimingSyncCheck, policyEnableCheck, cycleSelect, rateSelect, minSelect, hourSelect)
 	})
 }
+
+func getPartitionSelect(text string) (*fyne.Container, *widget.Select) {
+	var partitions []string
+	for _, v := range worker.DiskPartitionsCache {
+		partitions = append(partitions, v.Name)
+	}
+	partitionSelect := widget.NewSelect(partitions, nil)
+	return getLabelSelect(text, partitionSelect), partitionSelect
+}

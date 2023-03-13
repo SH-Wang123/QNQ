@@ -23,13 +23,13 @@ var (
 )
 
 var (
-	testSpeedComponent fyne.CanvasObject
-	testSpeedRetLab    *widget.Label
-	partitionSelect    *widget.Select
-	tsOnce             sync.Once
+	testSpeedComponent   fyne.CanvasObject
+	testSpeedRetLab      *widget.Label
+	speedPartitionSelect *widget.Select
+	tsOnce               sync.Once
 )
 
-func GetLocalSystemInfoComponent(_ fyne.Window) fyne.CanvasObject {
+func getLocalSystemInfoComponent(_ fyne.Window) fyne.CanvasObject {
 	lsiOnce.Do(func() {
 		osInfoContainer := loadValue2Label("OS : ", getBindString(config.LocalSystemInfo.OS))
 		sysFrameworkInfoContainer := loadValue2Label("System Framework : ", getBindString(config.LocalSystemInfo.SystemFramework))
@@ -45,26 +45,21 @@ func GetLocalSystemInfoComponent(_ fyne.Window) fyne.CanvasObject {
 	return localSystemInfoComponent
 }
 
-func GetDiskInfoComponent(_ fyne.Window) fyne.CanvasObject {
+func getDiskInfoComponent(_ fyne.Window) fyne.CanvasObject {
 	dicOnce.Do(func() {
 		loadDiskInfo()
 	})
 	return diskInfoComponent
 }
 
-func GetTestDiskSpeedComponent(_ fyne.Window) fyne.CanvasObject {
+func getTestDiskSpeedComponent(_ fyne.Window) fyne.CanvasObject {
 
 	tsOnce.Do(func() {
 		fileSizeSelect := widget.NewSelect([]string{"128MB", "512MB", "1GB", "4GB"}, nil)
 		fileSizeComp := getLabelSelect("Test size:    ", fileSizeSelect)
 		bufferSizeSelect := widget.NewSelect([]string{"512Byte", "1KB", "4KB", "8KB", "1MB", "4MB"}, nil)
 		bufferSizeComp := getLabelSelect("Buffer size: ", bufferSizeSelect)
-		var partitions []string
-		for _, v := range worker.DiskPartitionsCache {
-			partitions = append(partitions, v.Name)
-		}
-		partitionSelect = widget.NewSelect(partitions, nil)
-		partitionComp := getLabelSelect("Disk:          ", partitionSelect)
+		partitionComp, speedPartitionSelect := getPartitionSelect("Partition:          ")
 		errorText := widget.NewTextGridFromString("\nPlease select parameters!")
 		errorText.SetRowStyle(1, &widget.CustomTextGridStyle{FGColor: &color.NRGBA{R: 255, G: 0, B: 0, A: 255}, BGColor: color.White})
 		top := container.NewVBox(
@@ -76,13 +71,13 @@ func GetTestDiskSpeedComponent(_ fyne.Window) fyne.CanvasObject {
 		errorText.Hide()
 		charts := container.NewMax()
 		startBtn := widget.NewButton("Start", func() {
-			if partitionSelect.Selected == "" || fileSizeSelect.Selected == "" || bufferSizeSelect.Selected == "" {
+			if speedPartitionSelect.Selected == "" || fileSizeSelect.Selected == "" || bufferSizeSelect.Selected == "" {
 				errorText.Show()
 				return
 			} else {
 				errorText.Hide()
 			}
-			totalPath := partitionSelect.Selected
+			totalPath := speedPartitionSelect.Selected
 			fileSize := worker.ConvertCapacity(fileSizeSelect.Selected)
 			bufferSize := worker.ConvertCapacity(bufferSizeSelect.Selected)
 

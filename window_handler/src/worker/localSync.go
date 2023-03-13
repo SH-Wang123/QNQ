@@ -92,13 +92,13 @@ func MarkFileTree(node *FileNode, rootPath string) {
 }
 
 // SyncBatchFileTree Crete folder
-func SyncBatchFileTree(node *FileNode, startPath string) {
+func SyncBatchFileTree(node *FileNode, targetPath string) {
 	if node.AbstractPath == config.NOT_SET_STR {
 		InitFileNode(true, false)
 	}
-	CreateDir(startPath)
+	CreateDir(targetPath)
 	for _, child := range node.ChildrenNodeList {
-		absPath := startPath + fileSeparator + child.AnchorPointPath
+		absPath := targetPath + fileSeparator + child.AnchorPointPath
 		if !child.IsDirectory {
 			tf, err := OpenFile(absPath, true)
 			if err == nil {
@@ -113,6 +113,7 @@ func SyncBatchFileTree(node *FileNode, startPath string) {
 			}
 		} else {
 			CreateDir(absPath)
+			ReverseCompareAndDelete(child.AbstractPath, absPath)
 			SyncBatchFileTree(child, absPath)
 		}
 	}
@@ -258,6 +259,10 @@ func getSingleTargetFile(sf *os.File, targetPath string) *os.File {
 }
 
 func LocalSyncSingleFile(msg interface{}, q *common.QWorker) {
+	defer singleFileDone()
+	if CompareMd5(q.PrivateFile, q.TargetFile) {
+		return
+	}
 	buf := make([]byte, 4096)
 	for {
 		n, err := q.PrivateFile.Read(buf)
@@ -272,8 +277,6 @@ func LocalSyncSingleFile(msg interface{}, q *common.QWorker) {
 			break
 		}
 	}
-
-	defer singleFileDone()
 }
 
 func closeAndCheckFile(w *common.QWorker) {

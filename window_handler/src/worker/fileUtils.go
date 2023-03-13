@@ -3,17 +3,14 @@ package worker
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"math/rand"
-	"net/http"
 	"os"
 	"regexp"
 	"strconv"
 	"time"
-	"window_handler/common"
 	"window_handler/config"
 )
 
@@ -32,10 +29,12 @@ func OpenFile(filePath string, createFile bool) (*os.File, error) {
 	return f, nil
 }
 
-func CloseFile(f *os.File) {
-	err := f.Close()
-	if err != nil {
-		log.Printf("close file err : %v", err.Error())
+func CloseFile(fs ...*os.File) {
+	for _, f := range fs {
+		err := f.Close()
+		if err != nil {
+			log.Printf("close file err : %v", err.Error())
+		}
 	}
 }
 
@@ -53,7 +52,7 @@ func IsExist(path string) (bool, error) {
 func CreateDir(path string) {
 	exist, err := IsExist(path)
 	if err != nil {
-		log.Printf("get dir error : %v", err)
+		log.Printf("get dir exist error : %v", err)
 	}
 	if !exist {
 		err = os.Mkdir(path, os.ModePerm)
@@ -63,28 +62,24 @@ func CreateDir(path string) {
 	}
 }
 
-func DeleteFile(path string) error {
+func DeleteFile(path string) {
 	exist, err := IsExist(path)
+	f, _ := OpenFile(path, false)
+	fChild, _ := f.Readdir(-1)
+	CloseFile(f)
 	if err != nil {
-		log.Printf("get dir error : %v", err)
+		log.Printf("get file error : %v", err)
 	}
 	if exist {
-		err = os.Remove(path)
-		return err
+		if len(fChild) == 0 {
+			err = os.Remove(path)
+		} else {
+			err = os.RemoveAll(path)
+		}
 	}
-	return nil
-}
-
-func DeleteDir(path string) error {
-	exist, err := IsExist(path)
 	if err != nil {
-		log.Printf("get dir error : %v", err)
+		log.Printf("delte file error : %v", err)
 	}
-	if exist {
-		err = os.RemoveAll(path)
-		return err
-	}
-	return nil
 }
 
 func IsOpenDirError(err error, path string) bool {
@@ -356,33 +351,35 @@ func GetFileRootTree(root string) {
 
 }
 
-func getObjFromResponse(resp *http.Response, obj any) any {
-	defer resp.Body.Close()
-	b, _ := io.ReadAll(resp.Body)
-	qresponse := common.QResponse{}
-	err := json.Unmarshal(b, &qresponse)
-	if err != nil {
-		return nil
+func ReverseCompareAndDelete(sourcePath string, targetPath string) {
+	exist0, err0 := IsExist(sourcePath)
+	exist1, err1 := IsExist(targetPath)
+	if err0 != nil || err1 != nil || !exist0 || !exist1 {
+		return
 	}
-	retJson, err := json.Marshal(qresponse.Data)
-	if err != nil {
-		return nil
+	sf, _ := OpenFile(sourcePath, false)
+	tf, _ := OpenFile(targetPath, false)
+	defer CloseFile(tf, sf)
+	sfChildMap := make(map[string]int)
+	tfChild, _ := tf.Readdir(-1)
+	sfChild, _ := sf.Readdir(-1)
+	for _, child := range sfChild {
+		sfChildMap[child.Name()] = 1
 	}
-	err = json.Unmarshal(retJson, obj)
-	if err != nil {
-		return nil
-	}
-	return obj
-}
-
-func sendGet(url string, params ...map[string]string) (resp *http.Response, err error) {
-	var paramsStr = ""
-	for k, v := range params {
-		if paramsStr == "" {
-			paramsStr = fmt.Sprintf("?%s=%s", k, v)
-		} else {
-			paramsStr = paramsStr + fmt.Sprintf("&%s=%s", k, v)
+	for _, child := range tfChild {
+		if sfChildMap[child.Name()] == 0 {
+			DeleteFile(targetPath + fileSeparator + child.Name())
 		}
 	}
-	return http.Get(url + paramsStr)
+}
+
+func GetNilNode(absPath string) *FileNode {
+	return &FileNode{
+		IsDirectory:     true,
+		HasChildren:     true,
+		AbstractPath:    absPath,
+		AnchorPointPath: "",
+		HeadFileNode:    nil,
+		VarianceType:    VARIANCE_ROOT,
+	}
 }

@@ -74,56 +74,62 @@ var (
 		"localSync": {
 			"Local Sync",
 			"",
-			GetBatchLocalSyncComponent,
+			getBatchLocalSyncComponent,
 			true,
 		},
 		"localBatchSync": {
 			"Local Batch Sync",
 			"Click start button to begin sync",
-			GetBatchLocalSyncComponent,
+			getBatchLocalSyncComponent,
 			true,
 		},
 		"localSingleSync": {
 			"Local Single Sync",
 			"Click start button to begin sync.",
-			GetSingleLocalSyncComponent,
+			getSingleLocalSyncComponent,
+			true,
+		},
+		"partitionSync": {
+			"Partition Sync",
+			"Click start button to begin sync",
+			getPartitionSyncComponent,
 			true,
 		},
 		"remoteSync": {
 			"Remote Single Sync",
 			"Click start button to begin sync.",
-			GetRemoteSingleComponent,
+			getRemoteSingleComponent,
 			true,
 		},
 		"remoteSingleSync": {
 			"Remote Single Sync",
 			"Click start button to begin sync.\nPlease test the connection first!",
-			GetRemoteSingleComponent,
+			getRemoteSingleComponent,
 			true,
 		},
 		"systemInfo": {
 			"System Information",
 			"",
-			GetLocalSystemInfoComponent,
+			getLocalSystemInfoComponent,
 			true,
 		},
 		"diskInfo": {
 			"Disk Information",
 			"Basic Disk Information",
-			GetDiskInfoComponent,
+			getDiskInfoComponent,
 			true,
 		},
 		"testDiskSpeed": {
 			"Test Disk Speed",
 			"The recommended buffer size is 4MB.",
-			GetTestDiskSpeedComponent,
+			getTestDiskSpeedComponent,
 			true,
 		},
 	}
 	//设置菜单树
 	NavigationIndex = map[string][]string{
 		"":           {"localSync", "systemInfo", "remoteSync"},
-		"localSync":  {"localBatchSync", "localSingleSync"},
+		"localSync":  {"localBatchSync", "localSingleSync", "partitionSync"},
 		"systemInfo": {"diskInfo", "testDiskSpeed"},
 		"remoteSync": {"remoteSingleSync"},
 	}

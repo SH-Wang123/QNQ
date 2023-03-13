@@ -72,6 +72,7 @@ func loadDefaultConfig() {
 		QnqBTarget:      defaultRemote,
 		LocalSingleSync: defaultLocal,
 		LocalBatchSync:  defaultLocal,
+		PartitionSync:   defaultLocal,
 		VarianceAnalysis: varianceAnalysis{
 			TimeStamp: true,
 			Md5:       true,

@@ -203,7 +203,7 @@ func watchGWChannel() {
 }
 
 func setDiskSpeedRet() {
-	partition := partitionSelect.Selected
+	partition := speedPartitionSelect.Selected
 	rSpeed := fmt.Sprint(worker.DiskReadSpeedCache[partition])
 	wSpeed := fmt.Sprint(worker.DiskWriteSpeedCache[partition])
 	testSpeedRetLab.SetText("Disk : " + partition + "\n" + "Read speed : " + rSpeed + "MB/S\n" + "Write speed : " + wSpeed + "MB/S\n")

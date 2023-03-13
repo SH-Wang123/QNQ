@@ -15,10 +15,11 @@ var SystemConfigCache cacheConfig
 
 type systemConfig struct {
 	Version          string           `json:"version"`
-	QnqSTarget       qnqTarget        `json:"qnq_s_target"`
-	QnqBTarget       qnqTarget        `json:"qnq_b_target"`
+	QnqSTarget       qnqTarget        `json:"qnq_single_target"`
+	QnqBTarget       qnqTarget        `json:"qnq_batch_target"`
 	LocalSingleSync  localSync        `json:"local_single_sync"`
 	LocalBatchSync   localSync        `json:"local_batch_sync"`
+	PartitionSync    localSync        `json:"local_partition_sync"`
 	VarianceAnalysis varianceAnalysis `json:"variance_analysis"`
 }
 

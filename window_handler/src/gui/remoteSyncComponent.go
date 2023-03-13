@@ -18,7 +18,7 @@ var (
 	rscOnce             sync.Once
 )
 
-func GetRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
+func getRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
 	rscOnce.Do(func() {
 		bindingIp := binding.NewString()
 		bindingIp.Set(config.SystemConfigCache.Value().QnqSTarget.Ip)

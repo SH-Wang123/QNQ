@@ -20,14 +20,7 @@ func init() {
 }
 
 func InitFileNode(initAll bool, async bool) {
-	LocalBSFileNode = &FileNode{
-		IsDirectory:     true,
-		HasChildren:     true,
-		AbstractPath:    config.SystemConfigCache.Value().LocalBatchSync.SourcePath,
-		AnchorPointPath: "",
-		HeadFileNode:    nil,
-		VarianceType:    VARIANCE_ROOT,
-	}
+	LocalBSFileNode = GetNilNode(config.SystemConfigCache.Value().LocalBatchSync.SourcePath)
 	if async {
 		go GetFileTree(LocalBSFileNode, true)
 	} else {

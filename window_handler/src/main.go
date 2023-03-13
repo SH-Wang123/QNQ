@@ -22,7 +22,7 @@ func main() {
 	go network.StartQClient()
 	network.NetChan.StartPump()
 	//config.GetTargetSystemInfo()
-	worker.InitFileNode(false, false)
+	worker.InitFileNode(false, true)
 	common.GetCoroutinesPool().StartPool()
 	if config.CLI_FALG {
 		cli.StartCli()
