@@ -13,6 +13,11 @@ const (
 	TEST_DISK_SPEED_OVER
 )
 
+var CurrentLocalBatchSN string
+var CurrentLocalPartSN string
+var LocalBatchStartLock = &sync.Mutex{}
+var LocalPartStartLock = &sync.Mutex{}
+
 var gwLock sync.RWMutex
 
 var GWChannel = make(chan int)

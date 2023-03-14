@@ -8,7 +8,7 @@ import (
 
 const LOG_PATH = "./QNQ_W.log"
 
-func MakeLogger() {
+func init() {
 	_, err := os.Stat(LOG_PATH)
 	if err != nil {
 		filePtr, _ := os.Create(LOG_PATH)

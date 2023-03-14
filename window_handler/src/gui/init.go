@@ -180,10 +180,10 @@ func watchGWChannel() {
 				}
 				common.LocalBatchPolicyRunningFlag = true
 				localBatchPolicySyncBox.Add(localBatchPolicySyncBar)
-				batchDisable(localBatchSyncPolicyComponent, localBatchStartButton, diffAnalysisButton)
+				batchDisable(localBatchSyncPolicyComponent, localBatchStartButton)
 				localBatchSyncComponent.Refresh()
 			} else if c == common.LOCAL_BATCH_POLICY_STOP {
-				batchEnable(localBatchSyncPolicyComponent, localBatchStartButton, diffAnalysisButton)
+				batchEnable(localBatchSyncPolicyComponent, localBatchStartButton)
 				common.LocalBatchPolicyRunningFlag = false
 				syncErrorDialogOK = false
 				localBatchPolicySyncBox.Remove(localBatchPolicySyncBar)

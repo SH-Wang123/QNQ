@@ -21,7 +21,7 @@ type CoroutinesPool struct {
 func NewFixedPool(cap int) *CoroutinesPool {
 	var n int
 	if n == 0 {
-		n = runtime.NumCPU() * 32
+		n = runtime.NumCPU() * 2
 	}
 
 	p := &CoroutinesPool{
@@ -53,16 +53,13 @@ func (p *CoroutinesPool) Submit(executeFunc func(v ...interface{})) {
 
 // TODO 并发问题
 func GetCoroutinesPool() *CoroutinesPool {
-	if globalCoroPool == nil {
-		InitCoroutinesPool()
-		globalCoroPool.StartPool()
-	}
 	return globalCoroPool
 }
 
-func InitCoroutinesPool() {
+func init() {
 	if globalCoroPool == nil {
 		globalCoroPool = NewFixedPool(0)
 		log.Printf("Create a new coroutines pool, size : %v", globalCoroPool.GoNum)
 	}
+	GetCoroutinesPool().StartPool()
 }

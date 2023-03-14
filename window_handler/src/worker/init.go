@@ -6,8 +6,6 @@ import (
 	"window_handler/config"
 )
 
-var TotalFileNum = 0.0
-var DoneFileNum = 0.0
 var CapacityStrMap = make(map[string]CapacityUnit)
 
 func init() {
@@ -52,8 +50,6 @@ func GetFileTree(fNode *FileNode, isRecurrence bool) {
 			if isRecurrence {
 				if child.IsDir() {
 					GetFileTree(&childFileNode, isRecurrence)
-				} else {
-					TotalFileNum++
 				}
 			}
 		}

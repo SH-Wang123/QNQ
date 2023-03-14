@@ -299,7 +299,11 @@ func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, win fyne.Window) *wid
 						)
 					}
 					if configCache.TimingSync.Enable {
-						nextTime := worker.GetNextTimeFromConfig(isBatchSync, isRemoteSync)
+						nextTime := worker.GetNextSyncTime(
+							configCache.TimingSync.Days,
+							configCache.TimingSync.Minute,
+							configCache.TimingSync.Hour,
+						)
 						worker.StartPolicySync(
 							nextTime,
 							&tem,

@@ -29,6 +29,11 @@ func OpenFile(filePath string, createFile bool) (*os.File, error) {
 	return f, nil
 }
 
+func OpenDir(filePath string) (*os.File, error) {
+	f, err := os.Open(filePath)
+	return f, err
+}
+
 func CloseFile(fs ...*os.File) {
 	for _, f := range fs {
 		err := f.Close()
@@ -62,7 +67,7 @@ func CreateDir(path string) {
 	}
 }
 
-func DeleteFile(path string) {
+func DeleteFileOrDir(path string) {
 	exist, err := IsExist(path)
 	f, _ := OpenFile(path, false)
 	fChild, _ := f.Readdir(-1)
@@ -111,17 +116,6 @@ func CompareModifyTime(sf *os.File, tf *os.File) bool {
 		return false
 	}
 	return sfInfo.ModTime() == tfInfo.ModTime()
-}
-
-func GetSingleFileNode(path string) *FileNode {
-	return &FileNode{
-		IsDirectory:     false,
-		HasChildren:     false,
-		AbstractPath:    path,
-		AnchorPointPath: "",
-		HeadFileNode:    nil,
-		VarianceType:    VARIANCE_ROOT,
-	}
 }
 
 func uint64ToString(i uint64) string {
@@ -284,7 +278,7 @@ func GetTimeSum(daySub int, hourSub int, minSub int) time.Duration {
 	return retTime
 }
 
-func GetNextTimeFromConfig(isBatchSync bool, isRemoteSync bool) time.Duration {
+func getNextTimeFromConfig(isBatchSync bool, isRemoteSync bool) time.Duration {
 	configCache := config.SystemConfigCache.GetSyncPolicy(isBatchSync, isRemoteSync)
 	return GetNextSyncTime(
 		configCache.TimingSync.Days,
@@ -368,7 +362,7 @@ func ReverseCompareAndDelete(sourcePath string, targetPath string) {
 	}
 	for _, child := range tfChild {
 		if sfChildMap[child.Name()] == 0 {
-			DeleteFile(targetPath + fileSeparator + child.Name())
+			DeleteFileOrDir(targetPath + fileSeparator + child.Name())
 		}
 	}
 }
@@ -381,5 +375,21 @@ func GetNilNode(absPath string) *FileNode {
 		AnchorPointPath: "",
 		HeadFileNode:    nil,
 		VarianceType:    VARIANCE_ROOT,
+	}
+}
+
+func getTotalSize(sn *string, startPath string) {
+	f, err := OpenDir(startPath)
+	if err != nil {
+		return
+	}
+	children, _ := f.Readdir(-1)
+	CloseFile(f)
+	for _, child := range children {
+		if child.IsDir() {
+			getTotalSize(sn, child.Name())
+		} else {
+			addSizeToTotalMap(*sn, uint64(child.Size()))
+		}
 	}
 }

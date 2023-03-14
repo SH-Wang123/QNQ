@@ -44,16 +44,7 @@ func TestLocalBatchSyncCase(t *testing.T) {
 	batchSyncCreateTargetFile(localBatchSyncTestCase, t)
 	for _, testCase := range localBatchSyncTestCase {
 		startAbsPath, _ := filepath.Abs(sourcePath + testCase.startPath)
-		startNode := &worker.FileNode{
-			IsDirectory:     true,
-			HasChildren:     true,
-			AbstractPath:    startAbsPath,
-			AnchorPointPath: "",
-			HeadFileNode:    nil,
-			VarianceType:    worker.VARIANCE_ROOT,
-		}
-		worker.GetFileTree(startNode)
-		worker.SyncBatchFileTree(startNode, targetPath+testCase.startPath)
+		worker.BatchSyncFile(startAbsPath, targetPath+testCase.startPath)
 		errorInfo := worker.GetBatchSyncError()
 		if len(errorInfo) == 0 {
 			t.Logf(batchFileSyncUTLog+"case {%v} ok!!! count : {%v},  time: %v", testCase.prefixName, testCase.count, time.Now())
@@ -82,7 +73,7 @@ func TestPeriodicLocalBatchSync(t *testing.T) {
 			HeadFileNode:    nil,
 			VarianceType:    worker.VARIANCE_ROOT,
 		}
-		worker.GetFileTree(startNode)
+		worker.GetFileTree(startNode, true)
 		notEndFlag := true
 		go func() {
 			ticker := time.NewTicker(30 * time.Minute)

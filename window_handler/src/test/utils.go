@@ -33,7 +33,7 @@ func createFileTree(bufferSize worker.CapacityUnit, filePrefix *string, startPat
 func createUtPath(utPath string) {
 	utAbsPath, _ := filepath.Abs(utRoot)
 	worker.CreateDir(utAbsPath)
-	worker.DeleteDir(utAbsPath + utPath)
+	worker.DeleteFileOrDir(utAbsPath + utPath)
 	worker.CreateDir(utAbsPath + utPath)
 	worker.CreateDir(utAbsPath + utPath + sourceRoot)
 	worker.CreateDir(utAbsPath + utPath + targetRoot)

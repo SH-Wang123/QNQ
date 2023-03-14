@@ -29,7 +29,7 @@ func NewRemoteSyncSender() *common.QSender {
 		SN:                 common.GetSNCount(),
 		Active:             false,
 		Status:             common.TASK_FREE,
-		ExecuteFunc:        SendSingleFile,
+		ExecuteFunc:        sendSingleFile,
 		PrivateVariableMap: make(map[string]interface{}),
 	}
 }
@@ -67,7 +67,7 @@ func receiverDeconstruct(w *common.QWorker) {
 	}
 }
 
-func SendSingleFile(s *common.QSender) {
+func sendSingleFile(s *common.QSender) {
 	localFilePath := fmt.Sprintf("%v", s.PrivateVariableMap["local_file_path"])
 	if localFilePath == "" || localFilePath == "remoteFilePath" {
 		log.Printf("SendSingleFile QSender SN : {%v}, get a null file path", s.SN)
