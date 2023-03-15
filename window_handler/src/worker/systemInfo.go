@@ -24,6 +24,7 @@ func GetPartitionsInfo() {
 		for i, _ := range DiskPartitionsCache {
 			if DiskPartitionsCache[i].Name == info.Device {
 				DiskPartitionsCache[i].FreeSizeStr = freeStr
+				DiskPartitionsCache[i].FreeSize = moreInfo.Free
 				DiskPartitionsCache[i].UsedPercent = moreInfo.UsedPercent / 100
 				break
 			}
@@ -34,6 +35,8 @@ func GetPartitionsInfo() {
 				Name:         info.Device,
 				FsType:       info.Fstype,
 				TotalSizeStr: totalStr,
+				TotalSize:    moreInfo.Total,
+				FreeSize:     moreInfo.Free,
 				FreeSizeStr:  freeStr,
 				UsedPercent:  FloatRound(moreInfo.UsedPercent/100, 4),
 			}

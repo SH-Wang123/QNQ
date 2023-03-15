@@ -13,10 +13,17 @@ const (
 	TEST_DISK_SPEED_OVER
 )
 
-var CurrentLocalBatchSN string
-var CurrentLocalPartSN string
-var LocalBatchStartLock = &sync.Mutex{}
-var LocalPartStartLock = &sync.Mutex{}
+var (
+	CurrentLocalPartSN   string
+	CurrentLocalPartFile string = "Not running"
+	LocalPartStartLock          = &sync.WaitGroup{}
+)
+
+var (
+	CurrentLocalBatchSN   string
+	CurrentLocalBatchFile string = "Not running"
+	LocalBatchStartLock          = &sync.WaitGroup{}
+)
 
 var gwLock sync.RWMutex
 

@@ -31,6 +31,7 @@ var (
 	localBatchStartButton   *widget.Button
 	localBatchProgressBar   *fyne.Container
 	localBatchProgressBox   *fyne.Container
+	localBatchCurrentFile   *widget.Label
 	blcOnce                 sync.Once
 )
 
@@ -49,6 +50,7 @@ var (
 	partitionProgressBar   *fyne.Container
 	partitionProgressBox   *fyne.Container
 	partitionStartButton   *widget.Button
+	partitionCurrentFile   *widget.Label
 	psOnce                 sync.Once
 )
 
@@ -133,11 +135,18 @@ func getBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 		localBatchPolicySyncBox = container.NewVBox()
 		localBatchSyncPolicyComponent = getBatchSyncPolicyBtn(win, false)
 
+		localBatchCurrentFile = widget.NewLabel("Not running")
+		currentFileComp := container.NewHBox(
+			widget.NewLabel("Current sync file:"),
+			partitionCurrentFile,
+		)
+
 		FileSyncComponent = container.NewVBox(
 			container.NewVBox(
 				sourceComponent,
 				targetComponent,
 				syncPolicyRunningStatusComp,
+				currentFileComp,
 			),
 			localBatchStartButton,
 			localBatchSyncPolicyComponent,
@@ -164,10 +173,16 @@ func getPartitionSyncComponent(win fyne.Window) fyne.CanvasObject {
 		}
 		tPartitionSelect.Selected = config.SystemConfigCache.Cache.PartitionSync.TargetPath
 		initPartitionSyncStartBtn(win)
+		partitionCurrentFile = widget.NewLabel("Not running")
+		currentFileComp := container.NewHBox(
+			widget.NewLabel("Current sync file:"),
+			partitionCurrentFile,
+		)
 		partitionProgressBox = container.NewVBox()
 		partitionSyncComponent = container.NewVBox(
 			sPartitionComp,
 			tPartitionComp,
+			currentFileComp,
 			partitionStartButton,
 			partitionProgressBox,
 		)
@@ -182,7 +197,7 @@ func initPartitionSyncStartBtn(win fyne.Window) {
 			dialog.ShowInformation("Error", "Please set source and target path!", win)
 			return
 		}
-		common.LocalPartStartLock.Lock()
+		common.LocalPartStartLock.Add(1)
 		partitionProgressBar = getTaskProgressBar(partitionStartButton, partitionProgressBar, partitionProgressBox, true)
 		partitionProgressBox.Add(partitionProgressBar)
 		//TODO 优化协程池
@@ -191,7 +206,7 @@ func initPartitionSyncStartBtn(win fyne.Window) {
 			worker.StartPartitionSync()
 			log.Printf("PartitionSync Over Time : %v:%v:%v", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
 		}()
-
+		common.LocalPartStartLock.Done()
 	})
 }
 
@@ -212,11 +227,12 @@ func initStartLocalBatchButton(win fyne.Window) {
 			dialog.ShowInformation("Error", "Please set source and target path!", win)
 			return
 		}
-		common.LocalBatchStartLock.Lock()
+		common.LocalBatchStartLock.Add(1)
 		localBatchProgressBar = getTaskProgressBar(localBatchStartButton, localBatchProgressBar, localBatchProgressBox, false)
 		localBatchProgressBox.Add(localBatchProgressBar)
 		//TODO 优化协程池
 		go worker.StartLocalBatchSync()
+		common.LocalBatchStartLock.Done()
 	})
 }
 
@@ -237,18 +253,20 @@ func getTaskProgressBar(startBtn *widget.Button, progressBar *fyne.Container, pr
 	progress := widget.NewProgressBar()
 	go func() {
 		var progressNum = 0.0
-		var clock *sync.Mutex
+		var clock *sync.WaitGroup
 		if isPartition {
 			clock = common.LocalPartStartLock
 		} else {
 			clock = common.LocalBatchStartLock
 		}
-		clock.Lock()
+		clock.Wait()
 		for progressNum < 1 {
-			time.Sleep(time.Millisecond * 500)
+			time.Sleep(time.Millisecond * 100)
 			if isPartition {
+				partitionCurrentFile.SetText(common.CurrentLocalPartFile)
 				progressNum = worker.GetLocalBatchProgress(common.CurrentLocalPartSN)
 			} else {
+				partitionCurrentFile.SetText(common.CurrentLocalBatchFile)
 				progressNum = worker.GetLocalBatchProgress(common.CurrentLocalBatchSN)
 			}
 			progress.SetValue(progressNum)
@@ -256,11 +274,12 @@ func getTaskProgressBar(startBtn *widget.Button, progressBar *fyne.Container, pr
 			if len(err) != 0 {
 				log.Println()
 			}
+			partitionCurrentFile.Refresh()
 		}
-		time.Sleep(time.Second * 1)
+		partitionCurrentFile.SetText("Not running")
+		time.Sleep(time.Second * 3)
 		progressBox.Remove(progressBar)
 		startBtn.Enable()
-		clock.Unlock()
 	}()
 	return container.NewVBox(progress)
 }

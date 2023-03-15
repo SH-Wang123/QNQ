@@ -10,6 +10,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"sync"
 	"time"
 	"window_handler/config"
 )
@@ -197,9 +198,9 @@ func randomPalindrome(size CapacityUnit) []byte {
 }
 
 func ConvertCapacity(str string) CapacityUnit {
-	regFindNum, _ := regexp.Compile(`\d+`)
+	regFindNum, _ := regexp.Compile(`\d+\.\d+`)
 	numStr := regFindNum.FindAllString(str, -1)[0]
-	regFindUnit, _ := regexp.Compile(`\D+`)
+	regFindUnit, _ := regexp.Compile(`[A-Z]+`)
 	unit := regFindUnit.FindAllString(str, -1)[0]
 	var totalCap CapacityUnit
 	for k, v := range CapacityStrMap {
@@ -207,7 +208,7 @@ func ConvertCapacity(str string) CapacityUnit {
 			totalCap = v
 		}
 	}
-	num, _ := strconv.Atoi(numStr)
+	num, _ := strconv.ParseFloat(numStr, 64)
 	return CapacityUnit(int64(num)) * totalCap
 }
 
@@ -378,16 +379,30 @@ func GetNilNode(absPath string) *FileNode {
 	}
 }
 
-func getTotalSize(sn *string, startPath string) {
+func GetTotalSize(sn *string, startPath string, isRoot bool, lock *sync.WaitGroup) {
+	lock.Add(1)
+	defer lock.Done()
+	for _, v := range DiskPartitionsCache {
+		if v.Name == startPath {
+			GetPartitionsInfo()
+			addSizeToTotalMap(*sn, v.TotalSize-v.FreeSize)
+			return
+		}
+	}
 	f, err := OpenDir(startPath)
 	if err != nil {
+		log.Printf("GetTotalSize err: %v", err)
 		return
 	}
 	children, _ := f.Readdir(-1)
 	CloseFile(f)
 	for _, child := range children {
 		if child.IsDir() {
-			getTotalSize(sn, child.Name())
+			if isRoot {
+				go GetTotalSize(sn, startPath+fileSeparator+child.Name(), false, lock)
+			} else {
+				GetTotalSize(sn, startPath+fileSeparator+child.Name(), false, lock)
+			}
 		} else {
 			addSizeToTotalMap(*sn, uint64(child.Size()))
 		}

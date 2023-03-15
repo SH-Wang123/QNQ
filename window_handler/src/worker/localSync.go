@@ -3,6 +3,7 @@ package worker
 import (
 	"io"
 	"os"
+	"sync"
 	"time"
 	"window_handler/common"
 	"window_handler/config"
@@ -12,6 +13,7 @@ import (
 var totalSizeMap = make(map[string]uint64)
 var doneSizeMap = make(map[string]uint64)
 var batchErrMap = make(map[string][]string)
+var resourceLock = &sync.Mutex{}
 
 var batchSyncErrorCache = make([]SyncFileError, 0)
 var (
@@ -58,7 +60,7 @@ func GetFileTreeMap(node *FileNode, data *map[string][]string) {
 	}
 }
 
-func batchSyncFile(startPath string, targetPath string, sn *string) {
+func batchSyncFile(startPath string, targetPath string, sn *string, isPartition bool) {
 	CreateDir(targetPath)
 	sf, err := OpenDir(startPath)
 	if err != nil {
@@ -71,6 +73,11 @@ func batchSyncFile(startPath string, targetPath string, sn *string) {
 		targetAbsPath := targetPath + fileSeparator + child.Name()
 		sourceAbsPath := startPath + fileSeparator + child.Name()
 		if !child.IsDir() {
+			if isPartition {
+				common.CurrentLocalPartFile = sourceAbsPath
+			} else {
+				common.CurrentLocalBatchFile = sourceAbsPath
+			}
 			tf, errT := OpenFile(targetAbsPath, true)
 			rsf, errS := OpenFile(sourceAbsPath, true)
 			if CompareMd5(tf, rsf) {
@@ -91,7 +98,7 @@ func batchSyncFile(startPath string, targetPath string, sn *string) {
 				CloseFile(rsf, tf)
 			}
 		} else {
-			batchSyncFile(sourceAbsPath, targetAbsPath, sn)
+			batchSyncFile(sourceAbsPath, targetAbsPath, sn, isPartition)
 		}
 	}
 }
@@ -215,26 +222,30 @@ func StartLocalSingleSync() bool {
 func StartPartitionSync() {
 	sn := common.GetSNCount()
 	common.CurrentLocalPartSN = sn
-	addSizeToDoneMap(sn, 1)
-	getTotalSize(&sn, config.SystemConfigCache.Cache.PartitionSync.SourcePath)
-	common.LocalPartStartLock.Unlock()
+	initSizeMap(sn)
+	common.LocalPartStartLock.Add(1)
+	GetTotalSize(&sn, config.SystemConfigCache.Cache.PartitionSync.SourcePath, true, common.LocalPartStartLock)
+	common.LocalPartStartLock.Done()
 	batchSyncFile(
 		config.SystemConfigCache.Cache.PartitionSync.SourcePath,
 		config.SystemConfigCache.Cache.PartitionSync.TargetPath,
 		&sn,
+		true,
 	)
 }
 
 func StartLocalBatchSync() {
 	sn := common.GetSNCount()
 	common.CurrentLocalBatchSN = sn
-	addSizeToDoneMap(sn, 1)
-	getTotalSize(&sn, config.SystemConfigCache.Cache.LocalBatchSync.SourcePath)
-	common.LocalBatchStartLock.Unlock()
+	initSizeMap(sn)
+	common.LocalBatchStartLock.Add(1)
+	GetTotalSize(&sn, config.SystemConfigCache.Cache.LocalBatchSync.SourcePath, true, common.LocalBatchStartLock)
+	common.LocalBatchStartLock.Done()
 	batchSyncFile(
 		config.SystemConfigCache.Cache.LocalBatchSync.SourcePath,
 		config.SystemConfigCache.Cache.LocalBatchSync.TargetPath,
 		&sn,
+		false,
 	)
 }
 
@@ -286,6 +297,8 @@ func closeAndCheckFile(w *common.QWorker) {
 }
 
 func GetLocalBatchProgress(sn string) float64 {
+	resourceLock.Lock()
+	defer resourceLock.Unlock()
 	return float64(doneSizeMap[sn]) / float64(totalSizeMap[sn])
 }
 
@@ -331,13 +344,27 @@ func getTicker(isBatch bool, isRemote bool, isPeriodic bool) (*time.Ticker, func
 }
 
 func addSizeToDoneMap(sn string, size uint64) {
+	resourceLock.Lock()
+	defer resourceLock.Unlock()
 	doneSizeMap[sn] = doneSizeMap[sn] + size
 }
 
 func addSizeToTotalMap(sn string, size uint64) {
+	resourceLock.Lock()
+	defer resourceLock.Unlock()
 	totalSizeMap[sn] = totalSizeMap[sn] + size
 }
 
+func initSizeMap(sn string) {
+	resourceLock.Lock()
+	defer resourceLock.Unlock()
+	zero := uint64(0)
+	totalSizeMap[sn] = zero
+	doneSizeMap[sn] = zero
+}
+
 func sendNameToErrMap(sn string, name string) {
+	resourceLock.Lock()
+	defer resourceLock.Unlock()
 	batchErrMap[sn] = append(batchErrMap[sn], name)
 }

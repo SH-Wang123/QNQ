@@ -68,7 +68,9 @@ type Partition struct {
 	Name         string  `json:"name"`
 	FsType       string  `json:"fs_type"`
 	TotalSizeStr string  `json:"total_size_str"`
+	TotalSize    uint64  `json:"total_size"`
 	FreeSizeStr  string  `json:"free_size_str"`
+	FreeSize     uint64  `json:"free_size"`
 	UsedPercent  float64 `json:"used_percent"`
 }
 
