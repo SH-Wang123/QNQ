@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
@@ -32,6 +33,7 @@ var (
 	localBatchProgressBar   *fyne.Container
 	localBatchProgressBox   *fyne.Container
 	localBatchCurrentFile   *widget.Label
+	localBatchTimeRemaining *widget.Label
 	blcOnce                 sync.Once
 )
 
@@ -51,6 +53,7 @@ var (
 	partitionProgressBox   *fyne.Container
 	partitionStartButton   *widget.Button
 	partitionCurrentFile   *widget.Label
+	partitionTimeRemaining *widget.Label
 	psOnce                 sync.Once
 )
 
@@ -138,15 +141,20 @@ func getBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 		localBatchCurrentFile = widget.NewLabel("Not running")
 		currentFileComp := container.NewHBox(
 			widget.NewLabel("Current sync file:"),
-			partitionCurrentFile,
+			localBatchCurrentFile,
 		)
-
+		localBatchTimeRemaining = widget.NewLabel("Not running")
+		lbTimeComp := container.NewHBox(
+			widget.NewLabel("Time remaining:"),
+			localBatchTimeRemaining,
+		)
 		FileSyncComponent = container.NewVBox(
 			container.NewVBox(
 				sourceComponent,
 				targetComponent,
 				syncPolicyRunningStatusComp,
 				currentFileComp,
+				lbTimeComp,
 			),
 			localBatchStartButton,
 			localBatchSyncPolicyComponent,
@@ -178,11 +186,17 @@ func getPartitionSyncComponent(win fyne.Window) fyne.CanvasObject {
 			widget.NewLabel("Current sync file:"),
 			partitionCurrentFile,
 		)
+		partitionTimeRemaining = widget.NewLabel("Not running")
+		partitionTimeComp := container.NewHBox(
+			widget.NewLabel("Time remaining:"),
+			partitionTimeRemaining,
+		)
 		partitionProgressBox = container.NewVBox()
 		partitionSyncComponent = container.NewVBox(
 			sPartitionComp,
 			tPartitionComp,
 			currentFileComp,
+			partitionTimeComp,
 			partitionStartButton,
 			partitionProgressBox,
 		)
@@ -199,7 +213,6 @@ func initPartitionSyncStartBtn(win fyne.Window) {
 		}
 		common.LocalPartStartLock.Add(1)
 		partitionProgressBar = getTaskProgressBar(partitionStartButton, partitionProgressBar, partitionProgressBox, true)
-		partitionProgressBox.Add(partitionProgressBar)
 		//TODO 优化协程池
 		go func() {
 			log.Printf("PartitionSync Start Time : %v:%v:%v", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
@@ -208,16 +221,6 @@ func initPartitionSyncStartBtn(win fyne.Window) {
 		}()
 		common.LocalPartStartLock.Done()
 	})
-}
-
-func getPolicyStatusLabel(isBatch bool, isRemote bool) *fyne.Container {
-	syncPolicy := config.SystemConfigCache.GetSyncPolicy(isBatch, isRemote)
-	t := binding.NewBool()
-	t.Set(syncPolicy.PolicySwitch)
-	return container.New(layout.NewHBoxLayout(),
-		widget.NewLabel("Sync Policy Running : "),
-		widget.NewLabelWithData(binding.BoolToString(t)),
-	)
 }
 
 func initStartLocalBatchButton(win fyne.Window) {
@@ -229,11 +232,20 @@ func initStartLocalBatchButton(win fyne.Window) {
 		}
 		common.LocalBatchStartLock.Add(1)
 		localBatchProgressBar = getTaskProgressBar(localBatchStartButton, localBatchProgressBar, localBatchProgressBox, false)
-		localBatchProgressBox.Add(localBatchProgressBar)
 		//TODO 优化协程池
 		go worker.StartLocalBatchSync()
 		common.LocalBatchStartLock.Done()
 	})
+}
+
+func getPolicyStatusLabel(isBatch bool, isRemote bool) *fyne.Container {
+	syncPolicy := config.SystemConfigCache.GetSyncPolicy(isBatch, isRemote)
+	t := binding.NewBool()
+	t.Set(syncPolicy.PolicySwitch)
+	return container.New(layout.NewHBoxLayout(),
+		widget.NewLabel("Sync Policy Running : "),
+		widget.NewLabelWithData(binding.BoolToString(t)),
+	)
 }
 
 func getStartLocalSingleButton(win fyne.Window) *widget.Button {
@@ -251,35 +263,52 @@ func getStartLocalSingleButton(win fyne.Window) *widget.Button {
 func getTaskProgressBar(startBtn *widget.Button, progressBar *fyne.Container, progressBox *fyne.Container, isPartition bool) *fyne.Container {
 	startBtn.Disable()
 	progress := widget.NewProgressBar()
+	progressBox.Add(progress)
 	go func() {
+		time.Sleep(time.Millisecond * 500)
 		var progressNum = 0.0
-		var clock *sync.WaitGroup
+		var currentFileLabel *widget.Label
+		var currentSN string
+		var currentTimeRemaining *widget.Label
 		if isPartition {
-			clock = common.LocalPartStartLock
+			common.LocalPartStartLock.Wait()
+			currentFileLabel = partitionCurrentFile
+			currentTimeRemaining = partitionTimeRemaining
+			currentSN = common.CurrentLocalPartSN
 		} else {
-			clock = common.LocalBatchStartLock
+			common.LocalBatchStartLock.Wait()
+			currentFileLabel = localBatchCurrentFile
+			currentTimeRemaining = localBatchTimeRemaining
+			currentSN = common.CurrentLocalBatchSN
 		}
-		clock.Wait()
+		go func() {
+			currentTimeRemaining.SetText("Under calculation")
+			for {
+				remaining := worker.EstimatedTotalTime(currentSN, 2*time.Second)
+				if remaining <= 0 {
+					return
+				}
+				currentTimeRemaining.SetText(fmt.Sprint(remaining))
+			}
+		}()
 		for progressNum < 1 {
 			time.Sleep(time.Millisecond * 100)
-			if isPartition {
-				partitionCurrentFile.SetText(common.CurrentLocalPartFile)
-				progressNum = worker.GetLocalBatchProgress(common.CurrentLocalPartSN)
-			} else {
-				partitionCurrentFile.SetText(common.CurrentLocalBatchFile)
-				progressNum = worker.GetLocalBatchProgress(common.CurrentLocalBatchSN)
-			}
+			currentFileLabel.SetText(common.GetCurrentSyncFile(currentSN))
+			progressNum = worker.GetLocalBatchProgress(currentSN)
+			currentFileLabel.Refresh()
 			progress.SetValue(progressNum)
 			err := worker.GetBatchSyncError()
 			if len(err) != 0 {
 				log.Println()
 			}
-			partitionCurrentFile.Refresh()
 		}
-		partitionCurrentFile.SetText("Not running")
+		currentFileLabel.SetText("Not running")
+		currentTimeRemaining.SetText("Not running")
 		time.Sleep(time.Second * 3)
-		progressBox.Remove(progressBar)
+		progressBox.Remove(progress)
+		progressBox.Refresh()
 		startBtn.Enable()
+		currentFileLabel.Refresh()
 	}()
 	return container.NewVBox(progress)
 }

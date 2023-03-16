@@ -27,8 +27,14 @@ var (
 	timingRemoteSingleTicker   *time.Ticker
 )
 
+var (
+	COMPARE_RUNNING = "[Comparing] "
+	SYNC_RUNNING    = "[Syncing] "
+)
+
 func NewLocalSingleWorker(sourceFile *os.File, targetFile *os.File, sn string) *common.QWorker {
 	return &common.QWorker{
+		SN:              sn,
 		Sub:             nil,
 		ExecuteFunc:     LocalSyncSingleFile,
 		DeconstructFunc: closeAndCheckFile,
@@ -73,27 +79,25 @@ func batchSyncFile(startPath string, targetPath string, sn *string, isPartition 
 		targetAbsPath := targetPath + fileSeparator + child.Name()
 		sourceAbsPath := startPath + fileSeparator + child.Name()
 		if !child.IsDir() {
-			if isPartition {
-				common.CurrentLocalPartFile = sourceAbsPath
-			} else {
-				common.CurrentLocalBatchFile = sourceAbsPath
+			if child.Size() <= 512*int64(MB) {
+				tf, _ := OpenFile(targetAbsPath, true)
+				rsf, _ := OpenFile(sourceAbsPath, true)
+				common.SetCurrentSyncFile(*sn, COMPARE_RUNNING, sourceAbsPath)
+				if CompareMd5(tf, rsf) {
+					fInfo, _ := tf.Stat()
+					addSizeToDoneMap(*sn, uint64(fInfo.Size()))
+					CloseFile(tf, rsf)
+					continue
+				}
+				//reopen file
+				CloseFile(tf, rsf)
 			}
 			tf, errT := OpenFile(targetAbsPath, true)
 			rsf, errS := OpenFile(sourceAbsPath, true)
-			if CompareMd5(tf, rsf) {
-				fInfo, _ := tf.Stat()
-				addSizeToDoneMap(*sn, uint64(fInfo.Size()))
-				CloseFile(tf, rsf)
-				continue
-			}
-			//reopen file
-			CloseFile(tf, rsf)
-			tf, errT = OpenFile(targetAbsPath, true)
-			rsf, errS = OpenFile(sourceAbsPath, true)
 			//common.GetCoroutinesPool().Submit(worker.Execute())
 			if errT == nil && errS == nil {
 				worker := NewLocalSingleWorker(rsf, tf, *sn)
-				common.GetCoroutinesPool().Submit(worker.Execute)
+				worker.Execute()
 			} else {
 				CloseFile(rsf, tf)
 			}
@@ -109,7 +113,6 @@ func LocalBatchSyncOneTime() {
 	if common.LocalBatchPolicyRunningFlag {
 		return
 	}
-	InitFileNode(true, false)
 	StartLocalBatchSync()
 	common.SendSignal2GWChannel(common.LOCAL_BATCH_POLICY_STOP)
 }
@@ -220,10 +223,10 @@ func StartLocalSingleSync() bool {
 }
 
 func StartPartitionSync() {
+	common.LocalPartStartLock.Add(1)
 	sn := common.GetSNCount()
 	common.CurrentLocalPartSN = sn
 	initSizeMap(sn)
-	common.LocalPartStartLock.Add(1)
 	GetTotalSize(&sn, config.SystemConfigCache.Cache.PartitionSync.SourcePath, true, common.LocalPartStartLock)
 	common.LocalPartStartLock.Done()
 	batchSyncFile(
@@ -236,9 +239,9 @@ func StartPartitionSync() {
 
 func StartLocalBatchSync() {
 	sn := common.GetSNCount()
+	common.LocalBatchStartLock.Add(1)
 	common.CurrentLocalBatchSN = sn
 	initSizeMap(sn)
-	common.LocalBatchStartLock.Add(1)
 	GetTotalSize(&sn, config.SystemConfigCache.Cache.LocalBatchSync.SourcePath, true, common.LocalBatchStartLock)
 	common.LocalBatchStartLock.Done()
 	batchSyncFile(
@@ -270,6 +273,7 @@ func getSingleTargetFile(sf *os.File, targetPath string) *os.File {
 
 func LocalSyncSingleFile(msg interface{}, q *common.QWorker) {
 	buf := make([]byte, 4096*2)
+	common.SetCurrentSyncFile(q.SN, SYNC_RUNNING, q.PrivateFile.Name())
 	for {
 		n, err := q.PrivateFile.Read(buf)
 		if err != nil && err != io.EOF {

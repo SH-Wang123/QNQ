@@ -2,7 +2,9 @@
 
 package common
 
-import "sync"
+import (
+	"sync"
+)
 
 const (
 	LOCAL_BATCH_POLICY_RUNNING = iota
@@ -14,15 +16,17 @@ const (
 )
 
 var (
-	CurrentLocalPartSN   string
-	CurrentLocalPartFile string = "Not running"
-	LocalPartStartLock          = &sync.WaitGroup{}
+	CurrentLocalPartSN string
+	LocalPartStartLock = &sync.WaitGroup{}
 )
 
 var (
-	CurrentLocalBatchSN   string
-	CurrentLocalBatchFile string = "Not running"
-	LocalBatchStartLock          = &sync.WaitGroup{}
+	CurrentLocalBatchSN string
+	LocalBatchStartLock = &sync.WaitGroup{}
+)
+var (
+	currentFileMap = make(map[string]string)
+	cfLock         = &sync.RWMutex{}
 )
 
 var gwLock sync.RWMutex
@@ -36,4 +40,16 @@ func SendSignal2GWChannel(signal int) {
 	gwLock.Lock()
 	defer gwLock.Unlock()
 	GWChannel <- signal
+}
+
+func SetCurrentSyncFile(sn string, typeStr string, fileName string) {
+	cfLock.Lock()
+	defer cfLock.Unlock()
+	currentFileMap[sn] = typeStr + fileName
+}
+
+func GetCurrentSyncFile(sn string) string {
+	cfLock.Lock()
+	defer cfLock.Unlock()
+	return currentFileMap[sn]
 }

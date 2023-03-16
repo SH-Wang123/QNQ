@@ -15,8 +15,10 @@ func init() {
 	CapacityStrMap["GB"] = GB
 	CapacityStrMap["TB"] = TB
 	CapacityStrMap["PB"] = PB
+	gcFriend()
 }
 
+// Deprecated: 没有意义，太浪费内存，无需缓存整棵文件树
 func InitFileNode(initAll bool, async bool) {
 	LocalBSFileNode = GetNilNode(config.SystemConfigCache.Value().LocalBatchSync.SourcePath)
 	if async {
@@ -26,7 +28,12 @@ func InitFileNode(initAll bool, async bool) {
 	}
 }
 
-// GetFilePath BFS
+// gcHelper 定时清理无用数据的引用，GC好帮手
+func gcFriend() {
+	//TODO 清理totalSizeMap和doneMap（根据是否完成去清理）
+}
+
+// Deprecated: 顽固的面向对象思想，占用内存过多
 func GetFileTree(fNode *FileNode, isRecurrence bool) {
 	f, _ := OpenFile(fNode.AbstractPath, false)
 	allChild, err := f.Readdir(-1)

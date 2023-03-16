@@ -2,7 +2,6 @@ package common
 
 import (
 	"log"
-	"runtime"
 	"sync"
 )
 
@@ -21,7 +20,7 @@ type CoroutinesPool struct {
 func NewFixedPool(cap int) *CoroutinesPool {
 	var n int
 	if n == 0 {
-		n = runtime.NumCPU() * 2
+		n = 1
 	}
 
 	p := &CoroutinesPool{
