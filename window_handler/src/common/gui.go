@@ -6,6 +6,8 @@ import (
 	"sync"
 )
 
+var CLI_FALG = true
+
 const (
 	LOCAL_BATCH_POLICY_RUNNING = iota
 	LOCAL_BATCH_POLICY_STOP
@@ -39,7 +41,11 @@ var LocalSinglePolicyRunningFlag = false
 func SendSignal2GWChannel(signal int) {
 	gwLock.Lock()
 	defer gwLock.Unlock()
-	GWChannel <- signal
+	if CLI_FALG {
+
+	} else {
+		GWChannel <- signal
+	}
 }
 
 func SetCurrentSyncFile(sn string, typeStr string, fileName string) {

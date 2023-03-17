@@ -155,19 +155,23 @@ func swapChecked(w *widget.Check) {
 
 func getBatchSyncPolicyBtn(win fyne.Window, isRemote bool) *widget.Button {
 	if isRemote {
-		return getSyncPolicyBtn(true, true, win)
+		return getSyncPolicyBtn(true, false, true, win)
 	}
-	return getSyncPolicyBtn(true, false, win)
+	return getSyncPolicyBtn(true, false, false, win)
+}
+
+func getPartitionSyncPolicyBtn(win fyne.Window) *widget.Button {
+	return getSyncPolicyBtn(false, false, true, win)
 }
 
 func getSingleSyncPolicyBtn(win fyne.Window, isRemote bool) *widget.Button {
 	if isRemote {
-		return getSyncPolicyBtn(false, true, win)
+		return getSyncPolicyBtn(false, true, false, win)
 	}
-	return getSyncPolicyBtn(false, false, win)
+	return getSyncPolicyBtn(false, false, false, win)
 }
 
-func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, win fyne.Window) *widget.Button {
+func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, isPartitionSync bool, win fyne.Window) *widget.Button {
 	return widget.NewButton("Sync Policy", func() {
 		var title string
 		var daysCheckCompent [7]*widget.Check
@@ -176,10 +180,12 @@ func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, win fyne.Window) *wid
 		var usePeriodicSyncCheck *widget.Check
 		var useTimingSyncCheck *widget.Check
 		var policyEnableCheck *widget.Check
-		configCache := config.SystemConfigCache.GetSyncPolicy(isBatchSync, isRemoteSync)
+		configCache := config.SystemConfigCache.GetSyncPolicy(isBatchSync, isRemoteSync, isPartitionSync)
 		rateList := make([]string, 0)
 		cycleList := make([]string, 0)
-		if isBatchSync {
+		if isPartitionSync {
+			title = "Partition sync policy"
+		} else if isBatchSync {
 			if isRemoteSync {
 				title = "Remote batch sync policy"
 			} else {
@@ -295,6 +301,7 @@ func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, win fyne.Window) *wid
 							&tem,
 							isBatchSync,
 							isRemoteSync,
+							isPartitionSync,
 							true,
 						)
 					}
@@ -309,6 +316,7 @@ func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, win fyne.Window) *wid
 							&tem,
 							isBatchSync,
 							isRemoteSync,
+							isPartitionSync,
 							false,
 						)
 					}

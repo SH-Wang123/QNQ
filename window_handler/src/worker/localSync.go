@@ -19,10 +19,12 @@ var batchSyncErrorCache = make([]SyncFileError, 0)
 var (
 	periodicLocalBatchTicker   *time.Ticker
 	periodicLocalSingleTicker  *time.Ticker
+	periodicPartitionTicker    *time.Ticker
 	periodicRemoteBatchTicker  *time.Ticker
 	periodicRemoteSingleTicker *time.Ticker
 	timingLocalBatchTicker     *time.Ticker
 	timingLocalSingleTicker    *time.Ticker
+	timingPartitionTicker      *time.Ticker
 	timingRemoteBatchTicker    *time.Ticker
 	timingRemoteSingleTicker   *time.Ticker
 )
@@ -107,18 +109,18 @@ func batchSyncFile(startPath string, targetPath string, sn *string, isPartition 
 	}
 }
 
-// LocalBatchSyncOneTime 直接读取配置文件，无需参数
-func LocalBatchSyncOneTime() {
+// LocalBatchSyncSingleTime 直接读取配置文件，无需参数
+func LocalBatchSyncSingleTime() {
 	common.SendSignal2GWChannel(common.LOCAL_BATCH_POLICY_RUNNING)
 	if common.LocalBatchPolicyRunningFlag {
 		return
 	}
-	StartLocalBatchSync()
+	startLocalBatchSync()
 	common.SendSignal2GWChannel(common.LOCAL_BATCH_POLICY_STOP)
 }
 
-// LocalSingleSyncOneTime 直接读取配置文件，无需参数
-func LocalSingleSyncOneTime() {
+// LocalSingleSyncSingleTime 直接读取配置文件，无需参数
+func LocalSingleSyncSingleTime() {
 	common.SendSignal2GWChannel(common.LOCAL_SINGLE_POLICY_RUNNING)
 	sf, _ := OpenFile(config.SystemConfigCache.Cache.LocalSingleSync.SourcePath, false)
 	tf := getSingleTargetFile(sf, config.SystemConfigCache.Cache.LocalSingleSync.TargetPath)
@@ -130,7 +132,7 @@ func LocalSingleSyncOneTime() {
 func periodicLocalBatchSync() {
 	if config.SystemConfigCache.Cache.LocalBatchSync.SyncPolicy.PeriodicSync.Enable {
 		if config.SystemConfigCache.Value().LocalBatchSync.SyncPolicy.PolicySwitch {
-			LocalBatchSyncOneTime()
+			LocalBatchSyncSingleTime()
 		}
 	}
 }
@@ -138,7 +140,15 @@ func periodicLocalBatchSync() {
 func periodicLocalSingleSync() {
 	if config.SystemConfigCache.Cache.LocalSingleSync.SyncPolicy.PeriodicSync.Enable {
 		if config.SystemConfigCache.Cache.LocalSingleSync.SyncPolicy.PolicySwitch {
-			LocalSingleSyncOneTime()
+			LocalSingleSyncSingleTime()
+		}
+	}
+}
+
+func periodicPartitionSync() {
+	if config.SystemConfigCache.Cache.PartitionSync.SyncPolicy.PeriodicSync.Enable {
+		if config.SystemConfigCache.Cache.PartitionSync.SyncPolicy.PolicySwitch {
+			PartitionSyncSingleTime()
 		}
 	}
 }
@@ -152,19 +162,19 @@ func periodicRemoteSingleSync() {
 func timingLocalBatchSync() {
 	if config.SystemConfigCache.Cache.LocalBatchSync.SyncPolicy.TimingSync.Enable {
 		if config.SystemConfigCache.Cache.LocalBatchSync.SyncPolicy.PolicySwitch {
-			LocalBatchSyncOneTime()
+			LocalBatchSyncSingleTime()
 		}
 	}
 
 	if config.SystemConfigCache.Cache.LocalBatchSync.SyncPolicy.TimingSync.Enable {
 		if config.SystemConfigCache.Cache.LocalBatchSync.SyncPolicy.PolicySwitch {
-			nextTime := getNextTimeFromConfig(true, false)
+			nextTime := getNextTimeFromConfig(true, false, false)
 			if nextTime == 0 {
 				time.Sleep(61 * time.Second)
 			}
-			nextTime = getNextTimeFromConfig(true, false)
+			nextTime = getNextTimeFromConfig(true, false, false)
 			notEnd := false
-			StartPolicySync(nextTime, &notEnd, true, false, false)
+			StartPolicySync(nextTime, &notEnd, true, false, false, false)
 		}
 	}
 
@@ -172,13 +182,28 @@ func timingLocalBatchSync() {
 
 func timingLocalSingleSync() {
 	if config.SystemConfigCache.Cache.LocalSingleSync.SyncPolicy.TimingSync.Enable {
-		LocalSingleSyncOneTime()
+		LocalSingleSyncSingleTime()
 	}
 
 	if config.SystemConfigCache.Cache.LocalSingleSync.SyncPolicy.TimingSync.Enable {
-		nextTime := getNextTimeFromConfig(false, false)
+		nextTime := getNextTimeFromConfig(false, false, false)
 		notEnd := false
-		StartPolicySync(nextTime, &notEnd, false, false, false)
+		StartPolicySync(nextTime, &notEnd, false, false, false, false)
+	}
+}
+
+func timingPartitionSync() {
+	if config.SystemConfigCache.Cache.PartitionSync.SyncPolicy.TimingSync.Enable {
+		LocalSingleSyncSingleTime()
+	}
+	if config.SystemConfigCache.Cache.PartitionSync.SyncPolicy.TimingSync.Enable {
+		nextTime := getNextTimeFromConfig(false, false, true)
+		if nextTime == 0 {
+			time.Sleep(61 * time.Second)
+		}
+		nextTime = getNextTimeFromConfig(false, false, true)
+		notEnd := false
+		StartPolicySync(nextTime, &notEnd, false, false, false, false)
 	}
 }
 
@@ -202,27 +227,15 @@ func tickerWorker(ticker *time.Ticker, duration time.Duration, notEnd *bool, wor
 	}
 }
 
-func StartPolicySync(duration time.Duration, notEnd *bool, isBatch bool, isRemote bool, isPeriodic bool) {
-	ticker, workerFunc := getTicker(isBatch, isRemote, isPeriodic)
+func StartPolicySync(duration time.Duration, notEnd *bool, isBatch bool, isRemote bool, isPartition bool, isPeriodic bool) {
+	ticker, workerFunc := getTicker(isBatch, isRemote, isPeriodic, isPartition)
 	if ticker != nil {
 		ticker.Stop()
 	}
 	go tickerWorker(ticker, duration, notEnd, workerFunc)
 }
 
-func StartLocalSingleSync() bool {
-	sf, err := OpenFile(config.SystemConfigCache.Value().LocalSingleSync.SourcePath, false)
-	if err != nil {
-		return false
-	}
-	tf := getSingleTargetFile(sf, config.SystemConfigCache.Value().LocalSingleSync.TargetPath)
-	sn := common.GetSNCount()
-	worker := NewLocalSingleWorker(sf, tf, sn)
-	common.GetCoroutinesPool().Submit(worker.Execute)
-	return true
-}
-
-func StartPartitionSync() {
+func PartitionSyncSingleTime() {
 	common.LocalPartStartLock.Add(1)
 	sn := common.GetSNCount()
 	common.CurrentLocalPartSN = sn
@@ -237,7 +250,7 @@ func StartPartitionSync() {
 	)
 }
 
-func StartLocalBatchSync() {
+func startLocalBatchSync() {
 	sn := common.GetSNCount()
 	common.LocalBatchStartLock.Add(1)
 	common.CurrentLocalBatchSN = sn
@@ -321,9 +334,11 @@ func AddBatchSyncError(absPath string, reason string) {
 	batchSyncErrorCache = append(batchSyncErrorCache, node)
 }
 
-func getTicker(isBatch bool, isRemote bool, isPeriodic bool) (*time.Ticker, func()) {
+func getTicker(isBatch bool, isRemote bool, isPeriodic bool, isPartition bool) (*time.Ticker, func()) {
 	if isPeriodic {
-		if isRemote {
+		if isPartition {
+			return periodicPartitionTicker, periodicPartitionSync
+		} else if isRemote {
 			if isBatch {
 				return periodicRemoteBatchTicker, periodicRemoteBatchSync
 			}
@@ -334,7 +349,9 @@ func getTicker(isBatch bool, isRemote bool, isPeriodic bool) (*time.Ticker, func
 		}
 		return periodicLocalSingleTicker, periodicLocalSingleSync
 	} else {
-		if isRemote {
+		if isPartition {
+			return timingPartitionTicker, timingPartitionSync
+		} else if isRemote {
 			if isBatch {
 				return timingRemoteBatchTicker, timingRemoteBatchSync
 			}

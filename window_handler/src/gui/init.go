@@ -32,7 +32,7 @@ func I18n() {
 func StartGUI() {
 	a := app.NewWithID("qnq.window_handler")
 	a.SetIcon(theme.FyneLogo())
-	w := a.NewWindow("QNQ Sync " + config.SystemConfigCache.Value().Version)
+	w := a.NewWindow("QNQ Sync " + config.Version)
 	topWindow = w
 	w.SetMaster()
 	content := container.NewMax()
@@ -179,19 +179,19 @@ func watchGWChannel() {
 					continue
 				}
 				common.LocalBatchPolicyRunningFlag = true
-				localBatchPolicySyncBox.Add(localBatchPolicySyncBar)
+				localBatchPolicySyncBox.Add(localBatchPolicySyncPro)
 				batchDisable(localBatchSyncPolicyComponent, localBatchStartButton)
 				localBatchSyncComponent.Refresh()
 			} else if c == common.LOCAL_BATCH_POLICY_STOP {
 				batchEnable(localBatchSyncPolicyComponent, localBatchStartButton)
 				common.LocalBatchPolicyRunningFlag = false
 				syncErrorDialogOK = false
-				localBatchPolicySyncBox.Remove(localBatchPolicySyncBar)
+				localBatchPolicySyncBox.Remove(localBatchPolicySyncPro)
 			} else if c == common.LOCAL_SINGLE_POLICY_RUNNING {
-				localSinglePolicySyncBox.Add(localSinglePolicySyncBar)
+				localSinglePolicySyncBox.Add(localSinglePolicySyncPro)
 				localSingleSyncComponent.Refresh()
 			} else if c == common.LOCAL_SINGLE_POLICY_STOP {
-				localSinglePolicySyncBox.Remove(localSinglePolicySyncBar)
+				localSinglePolicySyncBox.Remove(localSinglePolicySyncPro)
 			} else if c == common.TEST_DISK_SPEED_START {
 				testSpeedRetLab.SetText("Testing...")
 			} else if c == common.TEST_DISK_SPEED_OVER {

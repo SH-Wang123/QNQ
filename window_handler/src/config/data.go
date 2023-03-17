@@ -7,7 +7,7 @@ import (
 
 const GET_INFO_FAILURE = "Getting information failure"
 const NOT_SET_STR = "Not Set"
-const version = "V0.0.4"
+const Version = "V0.0.4"
 const WindowHeight = 600
 const WindowWidth = 900
 
@@ -97,8 +97,10 @@ func (a *cacheConfig) Set(s systemConfig) {
 	a.NotifyAll()
 }
 
-func (a *cacheConfig) GetSyncPolicy(isBatch bool, isRemote bool) *syncPolicy {
-	if isBatch {
+func (a *cacheConfig) GetSyncPolicy(isBatch bool, isRemote bool, isPartitionSync bool) *syncPolicy {
+	if isPartitionSync {
+		return &a.Cache.PartitionSync.SyncPolicy
+	} else if isBatch {
 		if isRemote {
 			return &a.Cache.QnqSTarget.SyncPolicy
 		}

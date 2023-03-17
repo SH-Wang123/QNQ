@@ -67,7 +67,7 @@ func loadDefaultConfig() {
 	}
 
 	defaultConfig := systemConfig{
-		Version:         version,
+		Version:         Version,
 		QnqSTarget:      defaultRemote,
 		QnqBTarget:      defaultRemote,
 		LocalSingleSync: defaultLocal,

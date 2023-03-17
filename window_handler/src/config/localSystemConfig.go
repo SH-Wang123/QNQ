@@ -44,4 +44,8 @@ func loadConfig() {
 	} else {
 		SystemConfigCache.Set(readConfig())
 	}
+	if SystemConfigCache.Cache.Version != Version {
+		SystemConfigCache.Cache.Version = Version
+		SystemConfigCache.NotifyAll()
+	}
 }

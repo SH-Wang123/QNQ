@@ -279,8 +279,8 @@ func GetTimeSum(daySub int, hourSub int, minSub int) time.Duration {
 	return retTime
 }
 
-func getNextTimeFromConfig(isBatchSync bool, isRemoteSync bool) time.Duration {
-	configCache := config.SystemConfigCache.GetSyncPolicy(isBatchSync, isRemoteSync)
+func getNextTimeFromConfig(isBatchSync bool, isRemoteSync bool, isPartition bool) time.Duration {
+	configCache := config.SystemConfigCache.GetSyncPolicy(isBatchSync, isRemoteSync, isPartition)
 	return GetNextSyncTime(
 		configCache.TimingSync.Days,
 		configCache.TimingSync.Minute,
@@ -411,19 +411,20 @@ func GetTotalSize(sn *string, startPath string, isRoot bool, lock *sync.WaitGrou
 
 // EstimatedTotalTime 估计完成所需的时间，统计周期5次，取平均值
 func EstimatedTotalTime(sn string, timeCell time.Duration) time.Duration {
+	var times = 5
 	if doneSizeMap[sn] == totalSizeMap[sn] {
 		return 0
 	}
 	var totalSpeed uint64
 	totalSpeed = 0
-	for i := 0; i < 5; i++ {
+	for i := 0; i < times; i++ {
 		totalSize0 := doneSizeMap[sn]
 		time.Sleep(timeCell)
 		totalSizeRet := doneSizeMap[sn] - totalSize0
 		speed := totalSizeRet / uint64(timeCell/time.Second)
 		totalSpeed += speed
 	}
-	aveSpeed := totalSpeed / 5
+	aveSpeed := totalSpeed / uint64(times)
 	tTime := (totalSizeMap[sn] - doneSizeMap[sn]) / aveSpeed
 	return time.Duration(tTime * uint64(time.Second))
 }

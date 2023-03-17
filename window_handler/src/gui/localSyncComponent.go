@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
@@ -17,44 +16,39 @@ import (
 )
 
 var FileSyncComponent fyne.CanvasObject
-var localBatchPolicySyncBox *fyne.Container
-var localBatchPolicySyncBar *fyne.Container
-var localSinglePolicySyncBox *fyne.Container
-var localSinglePolicySyncBar *fyne.Container
 
 var (
-	localSingleSyncComponent fyne.CanvasObject
-	slcOnce                  sync.Once
-)
-
-var (
-	localBatchSyncComponent fyne.CanvasObject
-	localBatchStartButton   *widget.Button
-	localBatchProgressBar   *fyne.Container
-	localBatchProgressBox   *fyne.Container
-	localBatchCurrentFile   *widget.Label
-	localBatchTimeRemaining *widget.Label
-	blcOnce                 sync.Once
-)
-
-var (
-	localBatchSyncPolicyComponent *widget.Button
-	lbspOnce                      sync.Once
-)
-
-var (
+	localSingleSyncComponent       fyne.CanvasObject
 	localSingleSyncPolicyComponent *widget.Button
-	lsspOnce                       sync.Once
+	localSinglePolicySyncBox       *fyne.Container
+	localSinglePolicySyncPro       *fyne.Container
+	slcOnce                        sync.Once
 )
 
 var (
-	partitionSyncComponent fyne.CanvasObject
-	partitionProgressBar   *fyne.Container
-	partitionProgressBox   *fyne.Container
-	partitionStartButton   *widget.Button
-	partitionCurrentFile   *widget.Label
-	partitionTimeRemaining *widget.Label
-	psOnce                 sync.Once
+	localBatchSyncComponent       fyne.CanvasObject
+	localBatchSyncPolicyComponent *widget.Button
+	localBatchStartButton         *widget.Button
+	localBatchPolicySyncBox       *fyne.Container
+	localBatchPolicySyncPro       *fyne.Container
+	localBatchProgressBar         *fyne.Container
+	localBatchProgressBox         *fyne.Container
+	localBatchCurrentFile         *widget.Label
+	localBatchTimeRemaining       *widget.Label
+	blcOnce                       sync.Once
+)
+
+var (
+	partitionSyncComponent       fyne.CanvasObject
+	partitionSyncPolicyComponent *widget.Button
+	partitionProgressBar         *fyne.Container
+	partitionProgressBox         *fyne.Container
+	partitionPolicySyncBox       *fyne.Container
+	partitionPolicySyncPro       *fyne.Container
+	partitionStartButton         *widget.Button
+	partitionCurrentFile         *widget.Label
+	partitionTimeRemaining       *widget.Label
+	psOnce                       sync.Once
 )
 
 func getSingleLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
@@ -92,17 +86,14 @@ func getSingleLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 		)
 		localSingleSyncPolicyComponent = getSingleSyncPolicyBtn(win, false)
 
-		syncPolicyRunningStatusComp := getPolicyStatusLabel(false, false)
-
 		lspPro := widget.NewProgressBarInfinite()
-		localSinglePolicySyncBar = container.NewVBox(lspPro)
+		localSinglePolicySyncPro = container.NewVBox(lspPro)
 
 		localSinglePolicySyncBox = container.NewVBox()
 
 		localSingleSyncComponent = container.NewVBox(
 			sourcePathComponent,
 			targetPathComponent,
-			syncPolicyRunningStatusComp,
 			getStartLocalSingleButton(win),
 			localSingleSyncPolicyComponent,
 		)
@@ -127,10 +118,8 @@ func getBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 			targetPathBind,
 			&config.SystemConfigCache.Cache.LocalBatchSync.TargetPath))
 
-		syncPolicyRunningStatusComp := getPolicyStatusLabel(true, false)
-
 		lbspPro := widget.NewProgressBarInfinite()
-		localBatchPolicySyncBar = container.NewVBox(lbspPro)
+		localBatchPolicySyncPro = container.NewVBox(lbspPro)
 
 		initStartLocalBatchButton(win)
 
@@ -152,7 +141,6 @@ func getBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 			container.NewVBox(
 				sourceComponent,
 				targetComponent,
-				syncPolicyRunningStatusComp,
 				currentFileComp,
 				lbTimeComp,
 			),
@@ -192,13 +180,22 @@ func getPartitionSyncComponent(win fyne.Window) fyne.CanvasObject {
 			partitionTimeRemaining,
 		)
 		partitionProgressBox = container.NewVBox()
+		partitionPolicySyncBox = container.NewVBox()
+
+		partitionSyncPolicyComponent = getPartitionSyncPolicyBtn(win)
+
+		lbspPro := widget.NewProgressBarInfinite()
+		partitionPolicySyncPro = container.NewVBox(lbspPro)
+
 		partitionSyncComponent = container.NewVBox(
 			sPartitionComp,
 			tPartitionComp,
 			currentFileComp,
 			partitionTimeComp,
 			partitionStartButton,
+			partitionSyncPolicyComponent,
 			partitionProgressBox,
+			partitionPolicySyncBox,
 		)
 	})
 	return partitionSyncComponent
@@ -216,7 +213,7 @@ func initPartitionSyncStartBtn(win fyne.Window) {
 		//TODO 优化协程池
 		go func() {
 			log.Printf("PartitionSync Start Time : %v:%v:%v", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
-			worker.StartPartitionSync()
+			worker.PartitionSyncSingleTime()
 			log.Printf("PartitionSync Over Time : %v:%v:%v", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
 		}()
 		common.LocalPartStartLock.Done()
@@ -233,19 +230,9 @@ func initStartLocalBatchButton(win fyne.Window) {
 		common.LocalBatchStartLock.Add(1)
 		localBatchProgressBar = getTaskProgressBar(localBatchStartButton, localBatchProgressBar, localBatchProgressBox, false)
 		//TODO 优化协程池
-		go worker.StartLocalBatchSync()
+		go worker.LocalBatchSyncSingleTime()
 		common.LocalBatchStartLock.Done()
 	})
-}
-
-func getPolicyStatusLabel(isBatch bool, isRemote bool) *fyne.Container {
-	syncPolicy := config.SystemConfigCache.GetSyncPolicy(isBatch, isRemote)
-	t := binding.NewBool()
-	t.Set(syncPolicy.PolicySwitch)
-	return container.New(layout.NewHBoxLayout(),
-		widget.NewLabel("Sync Policy Running : "),
-		widget.NewLabelWithData(binding.BoolToString(t)),
-	)
 }
 
 func getStartLocalSingleButton(win fyne.Window) *widget.Button {
@@ -255,7 +242,7 @@ func getStartLocalSingleButton(win fyne.Window) *widget.Button {
 			dialog.ShowInformation("Error", "Please set source and target path!", win)
 			return
 		}
-		go worker.StartLocalSingleSync()
+		go worker.LocalSingleSyncSingleTime()
 	})
 	return button
 }
