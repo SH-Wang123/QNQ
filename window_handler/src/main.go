@@ -3,7 +3,7 @@ package main
 import (
 	"net"
 	"window_handler/cli"
-	"window_handler/config"
+	"window_handler/common"
 	"window_handler/gui"
 	"window_handler/network"
 	_ "window_handler/rest"
@@ -16,7 +16,7 @@ func main() {
 	worker.LoadWorkerFactory()
 	network.NetChan.StartPump()
 	//config.GetTargetSystemInfo()
-	if config.CLI_FALG {
+	if common.CLI_FALG {
 		cli.StartCli()
 	} else {
 		gui.StartGUI()
