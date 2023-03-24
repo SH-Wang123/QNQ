@@ -19,6 +19,7 @@ func OpenFile(filePath string, createFile bool) (*os.File, error) {
 	var f *os.File
 	var err error
 	if createFile {
+		DeleteFileOrDir(filePath)
 		f, err = os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0777)
 	} else {
 		f, err = os.Open(filePath)
@@ -55,15 +56,20 @@ func IsExist(path string) (bool, error) {
 	return false, err
 }
 
-func CreateDir(path string) {
+func CreateDir(path string, perm *os.FileMode) {
 	exist, err := IsExist(path)
 	if err != nil {
 		log.Printf("get dir exist error : %v", err)
 	}
 	if !exist {
-		err = os.Mkdir(path, os.ModePerm)
+		err = os.Mkdir(path, *perm)
 		if err != nil {
 			log.Printf("create dir error : %v", err)
+		}
+	} else {
+		err := os.Chmod(path, *perm)
+		if err != nil {
+			log.Printf("Set folder perm err: %v", err)
 		}
 	}
 }
@@ -409,22 +415,18 @@ func GetTotalSize(sn *string, startPath string, isRoot bool, lock *sync.WaitGrou
 	}
 }
 
-// EstimatedTotalTime 估计完成所需的时间，统计周期5次，取平均值
+// EstimatedTotalTime 估计完成所需的时间
 func EstimatedTotalTime(sn string, timeCell time.Duration) time.Duration {
-	var times = 5
-	if doneSizeMap[sn] == totalSizeMap[sn] {
+	if getTotalSize(sn) == getDoneSize(sn) {
 		return 0
 	}
-	var totalSpeed uint64
-	totalSpeed = 0
-	for i := 0; i < times; i++ {
-		totalSize0 := doneSizeMap[sn]
-		time.Sleep(timeCell)
-		totalSizeRet := doneSizeMap[sn] - totalSize0
-		speed := totalSizeRet / uint64(timeCell/time.Second)
-		totalSpeed += speed
+	doneSizeStart := getDoneSize(sn)
+	time.Sleep(timeCell)
+	doneSizeOver := getDoneSize(sn) - doneSizeStart
+	speed := doneSizeOver / uint64(timeCell/time.Second)
+	if speed == 0 {
+		return EstimatedTotalTime(sn, timeCell)
 	}
-	aveSpeed := totalSpeed / uint64(times)
-	tTime := (totalSizeMap[sn] - doneSizeMap[sn]) / aveSpeed
+	tTime := (getTotalSize(sn) - getDoneSize(sn)) / speed
 	return time.Duration(tTime * uint64(time.Second))
 }

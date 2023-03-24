@@ -12,3 +12,6 @@ window_handler/test/main.exe
 window_handler/src/system_config
 window_handler/src/window_handler.exe
 window_handler/src/ut_temp/
+.idea/vcs.xml
+.idea/modules.xml
+window_handler/src/go.sum

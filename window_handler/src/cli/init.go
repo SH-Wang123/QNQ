@@ -1,5 +1,4 @@
 package cli
 
 func StartCli() {
-
 }

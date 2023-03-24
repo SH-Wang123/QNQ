@@ -92,10 +92,12 @@ func getTestDiskSpeedComponent(_ fyne.Window) fyne.CanvasObject {
 
 func loadDiskInfo() {
 	diskInfosContainer := container.NewVBox()
-	refreshButton := widget.NewButtonWithIcon("", theme.ViewRefreshIcon(), func() {
+	refreshDiskButton := widget.NewButtonWithIcon("", theme.ViewRefreshIcon(), func() {
 		worker.GetPartitionsInfo()
+		loadDiskInfo()
+		diskInfoComponent.Refresh()
 	})
-	diskInfosContainer.Add(refreshButton)
+	diskInfosContainer.Add(refreshDiskButton)
 	for _, disk := range worker.DiskPartitionsCache {
 		totalSize := getBindString(disk.TotalSizeStr)
 		totalSizeLab := loadValue2Label("Total Size: ", totalSize)
@@ -103,8 +105,8 @@ func loadDiskInfo() {
 		freeSizeLab := loadValue2Label("Free Size: ", freeSize)
 		fsType := getBindString(disk.FsType)
 		fsTypeLabe := loadValue2Label("File System: ", fsType)
-		refreshButton.Resize(fyne.NewSize(15, 15))
-		refreshButton.Refresh()
+		refreshDiskButton.Resize(fyne.NewSize(15, 15))
+		refreshDiskButton.Refresh()
 		usedPer := binding.BindFloat(&disk.UsedPercent)
 		perProgress := widget.NewProgressBarWithData(usedPer)
 		diskComp := container.NewVBox(

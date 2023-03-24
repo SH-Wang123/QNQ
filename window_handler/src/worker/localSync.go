@@ -2,6 +2,7 @@ package worker
 
 import (
 	"io"
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -15,7 +16,8 @@ var doneSizeMap = make(map[string]uint64)
 var batchErrMap = make(map[string][]string)
 var resourceLock = &sync.Mutex{}
 
-var batchSyncErrorCache = make([]SyncFileError, 0)
+var syncErrorMap = make(map[string][]SyncFileError, 0)
+var errorMapLock = &sync.Mutex{}
 var (
 	periodicLocalBatchTicker   *time.Ticker
 	periodicLocalSingleTicker  *time.Ticker
@@ -69,23 +71,34 @@ func GetFileTreeMap(node *FileNode, data *map[string][]string) {
 }
 
 func batchSyncFile(startPath string, targetPath string, sn *string, isPartition bool) {
-	CreateDir(targetPath)
-	sf, err := OpenDir(startPath)
-	if err != nil {
+	sf, err1 := OpenDir(startPath)
+	if err1 != nil {
+		return
+	}
+	sfInfo, _ := sf.Stat()
+	sfMode := sfInfo.Mode()
+	CreateDir(targetPath, &sfMode)
+	tf, err2 := OpenDir(targetPath)
+	if err1 != nil || err2 != nil {
 		return
 	}
 	children, _ := sf.Readdir(-1)
-	CloseFile(sf)
+	CloseFile(sf, tf)
 	ReverseCompareAndDelete(startPath, targetPath)
 	for _, child := range children {
 		targetAbsPath := targetPath + fileSeparator + child.Name()
 		sourceAbsPath := startPath + fileSeparator + child.Name()
 		if !child.IsDir() {
 			if child.Size() <= 512*int64(MB) {
-				tf, _ := OpenFile(targetAbsPath, true)
-				rsf, _ := OpenFile(sourceAbsPath, true)
+				isExist, _ := IsExist(targetAbsPath)
+				tf, err3 := OpenFile(targetAbsPath, true)
+				rsf, err4 := OpenFile(sourceAbsPath, false)
+				if err3 != nil || err4 != nil {
+					log.Printf("sf err: %v, tf err: %v", err4, err3)
+					continue
+				}
 				common.SetCurrentSyncFile(*sn, COMPARE_RUNNING, sourceAbsPath)
-				if CompareMd5(tf, rsf) {
+				if isExist && CompareMd5(tf, rsf) {
 					fInfo, _ := tf.Stat()
 					addSizeToDoneMap(*sn, uint64(fInfo.Size()))
 					CloseFile(tf, rsf)
@@ -95,7 +108,7 @@ func batchSyncFile(startPath string, targetPath string, sn *string, isPartition 
 				CloseFile(tf, rsf)
 			}
 			tf, errT := OpenFile(targetAbsPath, true)
-			rsf, errS := OpenFile(sourceAbsPath, true)
+			rsf, errS := OpenFile(sourceAbsPath, false)
 			//common.GetCoroutinesPool().Submit(worker.Execute())
 			if errT == nil && errS == nil {
 				worker := NewLocalSingleWorker(rsf, tf, *sn)
@@ -110,29 +123,33 @@ func batchSyncFile(startPath string, targetPath string, sn *string, isPartition 
 }
 
 // LocalBatchSyncSingleTime 直接读取配置文件，无需参数
-func LocalBatchSyncSingleTime() {
-	common.SendSignal2GWChannel(common.LOCAL_BATCH_POLICY_RUNNING)
-	if common.LocalBatchPolicyRunningFlag {
-		return
+func LocalBatchSyncSingleTime(isPolicy bool) {
+	if isPolicy {
+		common.SendSignal2GWChannel(common.LOCAL_BATCH_POLICY_RUNNING)
+		defer common.SendSignal2GWChannel(common.LOCAL_BATCH_POLICY_STOP)
+		if common.LocalBatchPolicyRunningFlag {
+			return
+		}
 	}
 	startLocalBatchSync()
-	common.SendSignal2GWChannel(common.LOCAL_BATCH_POLICY_STOP)
 }
 
 // LocalSingleSyncSingleTime 直接读取配置文件，无需参数
-func LocalSingleSyncSingleTime() {
-	common.SendSignal2GWChannel(common.LOCAL_SINGLE_POLICY_RUNNING)
+func LocalSingleSyncSingleTime(isPolicy bool) {
+	if isPolicy {
+		common.SendSignal2GWChannel(common.LOCAL_SINGLE_POLICY_RUNNING)
+		defer common.SendSignal2GWChannel(common.LOCAL_SINGLE_POLICY_STOP)
+	}
 	sf, _ := OpenFile(config.SystemConfigCache.Cache.LocalSingleSync.SourcePath, false)
 	tf := getSingleTargetFile(sf, config.SystemConfigCache.Cache.LocalSingleSync.TargetPath)
 	worker := NewLocalSingleWorker(sf, tf, common.GetSNCount())
 	common.GetCoroutinesPool().Submit(worker.Execute)
-	common.SendSignal2GWChannel(common.LOCAL_SINGLE_POLICY_STOP)
 }
 
 func periodicLocalBatchSync() {
 	if config.SystemConfigCache.Cache.LocalBatchSync.SyncPolicy.PeriodicSync.Enable {
 		if config.SystemConfigCache.Value().LocalBatchSync.SyncPolicy.PolicySwitch {
-			LocalBatchSyncSingleTime()
+			LocalBatchSyncSingleTime(true)
 		}
 	}
 }
@@ -140,7 +157,7 @@ func periodicLocalBatchSync() {
 func periodicLocalSingleSync() {
 	if config.SystemConfigCache.Cache.LocalSingleSync.SyncPolicy.PeriodicSync.Enable {
 		if config.SystemConfigCache.Cache.LocalSingleSync.SyncPolicy.PolicySwitch {
-			LocalSingleSyncSingleTime()
+			LocalSingleSyncSingleTime(true)
 		}
 	}
 }
@@ -162,7 +179,7 @@ func periodicRemoteSingleSync() {
 func timingLocalBatchSync() {
 	if config.SystemConfigCache.Cache.LocalBatchSync.SyncPolicy.TimingSync.Enable {
 		if config.SystemConfigCache.Cache.LocalBatchSync.SyncPolicy.PolicySwitch {
-			LocalBatchSyncSingleTime()
+			LocalBatchSyncSingleTime(true)
 		}
 	}
 
@@ -182,7 +199,7 @@ func timingLocalBatchSync() {
 
 func timingLocalSingleSync() {
 	if config.SystemConfigCache.Cache.LocalSingleSync.SyncPolicy.TimingSync.Enable {
-		LocalSingleSyncSingleTime()
+		LocalSingleSyncSingleTime(true)
 	}
 
 	if config.SystemConfigCache.Cache.LocalSingleSync.SyncPolicy.TimingSync.Enable {
@@ -194,7 +211,7 @@ func timingLocalSingleSync() {
 
 func timingPartitionSync() {
 	if config.SystemConfigCache.Cache.PartitionSync.SyncPolicy.TimingSync.Enable {
-		LocalSingleSyncSingleTime()
+		LocalSingleSyncSingleTime(true)
 	}
 	if config.SystemConfigCache.Cache.PartitionSync.SyncPolicy.TimingSync.Enable {
 		nextTime := getNextTimeFromConfig(false, false, true)
@@ -303,14 +320,28 @@ func LocalSyncSingleFile(msg interface{}, q *common.QWorker) {
 			addSizeToDoneMap(q.SN, uint64(n))
 		}
 	}
+	syncFilePerm(q.PrivateFile, q.TargetFile)
+}
+
+func syncFilePerm(source *os.File, target *os.File) {
+	sfInfo, _ := source.Stat()
+	sfMode := sfInfo.Mode()
+	err := target.Chmod(sfMode)
+	if err != nil {
+		log.Printf("Sync file perm err: %v", err)
+	}
 }
 
 func closeAndCheckFile(w *common.QWorker) {
 	if !CompareMd5(w.PrivateFile, w.TargetFile) {
-		AddBatchSyncError(w.PrivateFile.Name(), md5CheckError)
+		AddBatchSyncError(w.PrivateFile.Name(), md5CheckError, w.SN)
 	}
-	CloseFile(w.TargetFile)
-	CloseFile(w.PrivateFile)
+	if w.TargetFile != nil {
+		CloseFile(w.TargetFile)
+	}
+	if w.PrivateFile != nil {
+		CloseFile(w.PrivateFile)
+	}
 }
 
 func GetLocalBatchProgress(sn string) float64 {
@@ -319,19 +350,20 @@ func GetLocalBatchProgress(sn string) float64 {
 	return float64(doneSizeMap[sn]) / float64(totalSizeMap[sn])
 }
 
-func GetBatchSyncError() []SyncFileError {
-	defer func() {
-		batchSyncErrorCache = make([]SyncFileError, 0)
-	}()
-	return batchSyncErrorCache
+func GetBatchSyncError(sn string) []SyncFileError {
+	errorMapLock.Lock()
+	defer errorMapLock.Unlock()
+	return syncErrorMap[sn]
 }
 
-func AddBatchSyncError(absPath string, reason string) {
+func AddBatchSyncError(absPath string, reason string, sn string) {
+	errorMapLock.Lock()
+	defer errorMapLock.Unlock()
 	node := SyncFileError{
 		AbsPath: absPath,
 		Reason:  reason,
 	}
-	batchSyncErrorCache = append(batchSyncErrorCache, node)
+	syncErrorMap[sn] = append(syncErrorMap[sn], node)
 }
 
 func getTicker(isBatch bool, isRemote bool, isPeriodic bool, isPartition bool) (*time.Ticker, func()) {
@@ -368,6 +400,18 @@ func addSizeToDoneMap(sn string, size uint64) {
 	resourceLock.Lock()
 	defer resourceLock.Unlock()
 	doneSizeMap[sn] = doneSizeMap[sn] + size
+}
+
+func getDoneSize(sn string) uint64 {
+	resourceLock.Lock()
+	defer resourceLock.Unlock()
+	return doneSizeMap[sn]
+}
+
+func getTotalSize(sn string) uint64 {
+	resourceLock.Lock()
+	defer resourceLock.Unlock()
+	return totalSizeMap[sn]
 }
 
 func addSizeToTotalMap(sn string, size uint64) {

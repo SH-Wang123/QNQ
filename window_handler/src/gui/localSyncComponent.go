@@ -230,7 +230,7 @@ func initStartLocalBatchButton(win fyne.Window) {
 		common.LocalBatchStartLock.Add(1)
 		localBatchProgressBar = getTaskProgressBar(localBatchStartButton, localBatchProgressBar, localBatchProgressBox, false)
 		//TODO 优化协程池
-		go worker.LocalBatchSyncSingleTime()
+		go worker.LocalBatchSyncSingleTime(false)
 		common.LocalBatchStartLock.Done()
 	})
 }
@@ -242,7 +242,7 @@ func getStartLocalSingleButton(win fyne.Window) *widget.Button {
 			dialog.ShowInformation("Error", "Please set source and target path!", win)
 			return
 		}
-		go worker.LocalSingleSyncSingleTime()
+		go worker.LocalSingleSyncSingleTime(false)
 	})
 	return button
 }
@@ -271,7 +271,7 @@ func getTaskProgressBar(startBtn *widget.Button, progressBar *fyne.Container, pr
 		go func() {
 			currentTimeRemaining.SetText("Under calculation")
 			for {
-				remaining := worker.EstimatedTotalTime(currentSN, 2*time.Second)
+				remaining := worker.EstimatedTotalTime(currentSN, 10*time.Second)
 				if remaining <= 0 {
 					return
 				}
@@ -284,7 +284,7 @@ func getTaskProgressBar(startBtn *widget.Button, progressBar *fyne.Container, pr
 			progressNum = worker.GetLocalBatchProgress(currentSN)
 			currentFileLabel.Refresh()
 			progress.SetValue(progressNum)
-			err := worker.GetBatchSyncError()
+			err := worker.GetBatchSyncError(currentSN)
 			if len(err) != 0 {
 				log.Println()
 			}

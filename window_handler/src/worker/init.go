@@ -16,6 +16,8 @@ func init() {
 	CapacityStrMap["TB"] = TB
 	CapacityStrMap["PB"] = PB
 	gcFriend()
+	LoadWorkerFactory()
+	GetPartitionsInfo()
 }
 
 // Deprecated: 没有意义，太浪费内存，无需缓存整棵文件树

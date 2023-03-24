@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-var CLI_FALG = true
+var CLI_FALG = false
 
 const (
 	LOCAL_BATCH_POLICY_RUNNING = iota
@@ -51,7 +51,13 @@ func SendSignal2GWChannel(signal int) {
 func SetCurrentSyncFile(sn string, typeStr string, fileName string) {
 	cfLock.Lock()
 	defer cfLock.Unlock()
-	currentFileMap[sn] = typeStr + fileName
+	s := []rune(typeStr + fileName)
+	if len(s) > 60 {
+		currentFileMap[sn] = string(s[0:60]) + " ..."
+	} else {
+		currentFileMap[sn] = string(s)
+	}
+
 }
 
 func GetCurrentSyncFile(sn string) string {
