@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 	"unsafe"
+	"window_handler/common"
 	"window_handler/config"
 	"window_handler/worker"
 )
@@ -229,7 +230,7 @@ func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, isPartitionSync bool,
 			indexArray = append(indexArray, s)
 		}
 		hourSelect := widget.NewSelect(indexArray, nil)
-		for i := 25; i <= 60; i++ {
+		for i := 25; i <= 59; i++ {
 			indexArray = append(indexArray, fmt.Sprint(i))
 		}
 		minSelect := widget.NewSelect(indexArray, nil)
@@ -358,4 +359,53 @@ func getPartitionSelect(text string) (*fyne.Container, *widget.Select) {
 	}
 	partitionSelect := widget.NewSelect(partitions, nil)
 	return getLabelSelect(text, partitionSelect), partitionSelect
+}
+
+// startSyncGUI 同步进度条、当前文件、剩余时间显示
+func startSyncGUI(progressBox *fyne.Container, currentFileLabel *widget.Label, currentTimeRemaining *widget.Label, businessType int) {
+	progress := widget.NewProgressBar()
+	progressBox.Add(progress)
+	go func() {
+		time.Sleep(time.Millisecond * 500)
+		var progressNum = 0.0
+		currentSN := common.GetCurrentSN(businessType)
+		common.GetStartLock(businessType).Wait()
+
+		go func() {
+			currentTimeRemaining.SetText("Under calculation")
+			for {
+				remaining := worker.EstimatedTotalTime(currentSN, 10*time.Second)
+				if remaining <= 0 {
+					return
+				}
+				currentTimeRemaining.SetText(fmt.Sprint(remaining))
+			}
+		}()
+
+		for progressNum < 1 {
+			if currentSN == "" {
+				currentSN = common.GetCurrentSN(businessType)
+			}
+			time.Sleep(time.Millisecond * 100)
+			currentFileLabel.SetText(common.GetCurrentSyncFile(currentSN))
+			progressNum = worker.GetLocalBatchProgress(currentSN)
+			currentFileLabel.Refresh()
+			progress.SetValue(progressNum)
+			err := worker.GetBatchSyncError(currentSN)
+			if len(err) != 0 {
+				log.Println()
+			}
+		}
+
+		progressBox.Refresh()
+		currentFileLabel.Refresh()
+	}()
+}
+
+// overSyncGUI 同步进度条、当前文件、剩余时间隐藏
+func overSyncGUI(progressBox *fyne.Container, currentFileLabel *widget.Label, currentTimeRemaining *widget.Label) {
+	time.Sleep(time.Second * 3)
+	progressBox.RemoveAll()
+	currentFileLabel.SetText(NOT_RUNNING_STR)
+	currentTimeRemaining.SetText(NOT_RUNNING_STR)
 }

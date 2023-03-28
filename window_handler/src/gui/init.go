@@ -170,34 +170,31 @@ func watchGWChannel() {
 	for {
 		select {
 		case c := <-common.GWChannel:
-			if c == common.LOCAL_BATCH_POLICY_RUNNING {
-				if common.LocalBatchPolicyRunningFlag {
-					syncErrorDialogOK = true
-					if !syncErrorDialogOK {
-						syncErrorDialog.Show()
-					}
-					continue
-				}
-				common.LocalBatchPolicyRunningFlag = true
-				localBatchPolicySyncBox.Add(localBatchPolicySyncPro)
+			if c == common.LOCAL_BATCH_RUNNING {
 				batchDisable(localBatchSyncPolicyComponent, localBatchStartButton)
-				localBatchSyncComponent.Refresh()
-			} else if c == common.LOCAL_BATCH_POLICY_STOP {
+				showSyncError(common.TYPE_LOCAL_BATCH)
+				localBatchRunningHandle()
+			} else if c == common.LOCAL_BATCH_FORCE_DONE {
 				batchEnable(localBatchSyncPolicyComponent, localBatchStartButton)
-				common.LocalBatchPolicyRunningFlag = false
-				syncErrorDialogOK = false
-				localBatchPolicySyncBox.Remove(localBatchPolicySyncPro)
-			} else if c == common.LOCAL_SINGLE_POLICY_RUNNING {
-				localSinglePolicySyncBox.Add(localSinglePolicySyncPro)
-				localSingleSyncComponent.Refresh()
-			} else if c == common.LOCAL_SINGLE_POLICY_STOP {
-				localSinglePolicySyncBox.Remove(localSinglePolicySyncPro)
+				localBatchDoneHandle()
+			} else if c == common.LOCAL_SINGLE_RUNNING {
+				batchDisable(localSingleSyncPolicyComponent, localSingleStartButton)
+				showSyncError(common.TYPE_LOCAL_SING)
+				localSingleRunningHandle()
+			} else if c == common.LOCAL_SINGLE_FORCE_DONE {
+				batchEnable(localSingleSyncPolicyComponent, localSingleStartButton)
+				localSingleDoneHandle()
 			} else if c == common.TEST_DISK_SPEED_START {
 				testSpeedRetLab.SetText("Testing...")
 			} else if c == common.TEST_DISK_SPEED_OVER {
 				setDiskSpeedRet()
+			} else if c == common.PARTITION_RUNNING {
+				batchDisable(partitionSyncPolicyComponent, partitionStartButton)
+				partitionRunningHandle()
+			} else if c == common.PARTITION_FORCE_DONE {
+				batchEnable(partitionSyncPolicyComponent, partitionStartButton)
+				partitionDoneHandle()
 			}
-
 		}
 	}
 }
@@ -207,4 +204,38 @@ func setDiskSpeedRet() {
 	rSpeed := fmt.Sprint(worker.DiskReadSpeedCache[partition])
 	wSpeed := fmt.Sprint(worker.DiskWriteSpeedCache[partition])
 	testSpeedRetLab.SetText("Disk : " + partition + "\n" + "Read speed : " + rSpeed + "MB/S\n" + "Write speed : " + wSpeed + "MB/S\n")
+}
+
+func localBatchRunningHandle() {
+	startSyncGUI(localBatchProgressBox, localBatchCurrentFile, localBatchTimeRemaining, common.TYPE_LOCAL_BATCH)
+}
+
+func localBatchDoneHandle() {
+	overSyncGUI(localBatchProgressBox, localBatchCurrentFile, localBatchTimeRemaining)
+}
+
+func localSingleRunningHandle() {
+	startSyncGUI(localSingleProgressBox, localSingleCurrentFile, localSingleTimeRemaining, common.TYPE_LOCAL_SING)
+}
+
+func localSingleDoneHandle() {
+	overSyncGUI(localSingleProgressBox, localSingleCurrentFile, localSingleTimeRemaining)
+}
+
+func partitionRunningHandle() {
+	startSyncGUI(partitionProgressBox, partitionCurrentFile, partitionTimeRemaining, common.TYPE_PARTITION)
+}
+
+func partitionDoneHandle() {
+	overSyncGUI(partitionProgressBox, partitionCurrentFile, partitionTimeRemaining)
+}
+
+func showSyncError(busType int) {
+	runningFlag := common.GetRunningFlag(busType)
+	if runningFlag {
+		syncErrorDialogOK = true
+		if !syncErrorDialogOK {
+			syncErrorDialog.Show()
+		}
+	}
 }

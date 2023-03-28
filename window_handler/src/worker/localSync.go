@@ -122,28 +122,61 @@ func batchSyncFile(startPath string, targetPath string, sn *string, isPartition 
 	}
 }
 
+func preSyncSingleTime(busType int, runningTag int) (string, *sync.WaitGroup) {
+	sn := common.GetSNCount()
+	lock := common.GetStartLock(busType)
+	lock.Add(1)
+	common.SetCurrentSN(busType, sn)
+	common.SetRunningFlag(busType, true)
+	common.SendSignal2GWChannel(runningTag)
+	initSizeMap(sn)
+	return sn, lock
+}
+
+func afterSyncSingleTime(busType int, doneTag int) {
+	common.SetRunningFlag(busType, false)
+	common.SendSignal2GWChannel(doneTag)
+}
+
 // LocalBatchSyncSingleTime 直接读取配置文件，无需参数
 func LocalBatchSyncSingleTime(isPolicy bool) {
 	if isPolicy {
-		common.SendSignal2GWChannel(common.LOCAL_BATCH_POLICY_RUNNING)
-		defer common.SendSignal2GWChannel(common.LOCAL_BATCH_POLICY_STOP)
-		if common.LocalBatchPolicyRunningFlag {
+		if common.GetRunningFlag(common.TYPE_LOCAL_BATCH) {
 			return
 		}
 	}
-	startLocalBatchSync()
+	sn, lock := preSyncSingleTime(common.TYPE_LOCAL_BATCH, common.LOCAL_BATCH_RUNNING)
+	defer afterSyncSingleTime(common.TYPE_LOCAL_BATCH, common.LOCAL_BATCH_FORCE_DONE)
+	GetTotalSize(&sn, config.SystemConfigCache.Cache.LocalBatchSync.SourcePath, true, lock)
+	lock.Done()
+	batchSyncFile(
+		config.SystemConfigCache.Cache.LocalBatchSync.SourcePath,
+		config.SystemConfigCache.Cache.LocalBatchSync.TargetPath,
+		&sn,
+		false,
+	)
 }
 
 // LocalSingleSyncSingleTime 直接读取配置文件，无需参数
 func LocalSingleSyncSingleTime(isPolicy bool) {
 	if isPolicy {
-		common.SendSignal2GWChannel(common.LOCAL_SINGLE_POLICY_RUNNING)
-		defer common.SendSignal2GWChannel(common.LOCAL_SINGLE_POLICY_STOP)
+		if common.GetRunningFlag(common.TYPE_LOCAL_SING) {
+			return
+		}
 	}
+	sn, lock := preSyncSingleTime(common.TYPE_LOCAL_SING, common.LOCAL_SINGLE_RUNNING)
+	defer afterSyncSingleTime(common.TYPE_LOCAL_SING, common.LOCAL_SINGLE_FORCE_DONE)
 	sf, _ := OpenFile(config.SystemConfigCache.Cache.LocalSingleSync.SourcePath, false)
 	tf := getSingleTargetFile(sf, config.SystemConfigCache.Cache.LocalSingleSync.TargetPath)
-	worker := NewLocalSingleWorker(sf, tf, common.GetSNCount())
-	common.GetCoroutinesPool().Submit(worker.Execute)
+	sfInfo, err := sf.Stat()
+	if err == nil {
+		addSizeToTotalMap(sn, uint64(sfInfo.Size()))
+	} else {
+		log.Printf("single sync get file stat err: %v", err)
+	}
+	lock.Done()
+	worker := NewLocalSingleWorker(sf, tf, sn)
+	worker.Execute()
 }
 
 func periodicLocalBatchSync() {
@@ -211,14 +244,10 @@ func timingLocalSingleSync() {
 
 func timingPartitionSync() {
 	if config.SystemConfigCache.Cache.PartitionSync.SyncPolicy.TimingSync.Enable {
-		LocalSingleSyncSingleTime(true)
+		PartitionSyncSingleTime()
 	}
 	if config.SystemConfigCache.Cache.PartitionSync.SyncPolicy.TimingSync.Enable {
 		nextTime := getNextTimeFromConfig(false, false, true)
-		if nextTime == 0 {
-			time.Sleep(61 * time.Second)
-		}
-		nextTime = getNextTimeFromConfig(false, false, true)
 		notEnd := false
 		StartPolicySync(nextTime, &notEnd, false, false, false, false)
 	}
@@ -230,13 +259,19 @@ func timingRemoteBatchSync() {
 func timingRemoteSingleSync() {
 }
 
-func tickerWorker(ticker *time.Ticker, duration time.Duration, notEnd *bool, workerFunc func()) {
+func tickerWorker(ticker *time.Ticker, duration time.Duration, notEnd *bool, workerFunc func(), isPeriodic bool) {
+	if duration == 0 {
+		duration = time.Second
+	}
 	ticker = time.NewTicker(duration)
 	for {
 		select {
 		case <-ticker.C:
 			if !*notEnd {
 				go workerFunc()
+				if !isPeriodic {
+					ticker.Stop()
+				}
 			} else {
 				return
 			}
@@ -249,36 +284,24 @@ func StartPolicySync(duration time.Duration, notEnd *bool, isBatch bool, isRemot
 	if ticker != nil {
 		ticker.Stop()
 	}
-	go tickerWorker(ticker, duration, notEnd, workerFunc)
+	go tickerWorker(ticker, duration, notEnd, workerFunc, isPeriodic)
 }
 
 func PartitionSyncSingleTime() {
-	common.LocalPartStartLock.Add(1)
-	sn := common.GetSNCount()
-	common.CurrentLocalPartSN = sn
-	initSizeMap(sn)
-	GetTotalSize(&sn, config.SystemConfigCache.Cache.PartitionSync.SourcePath, true, common.LocalPartStartLock)
-	common.LocalPartStartLock.Done()
+	if common.GetRunningFlag(common.TYPE_PARTITION) {
+		return
+	}
+	sn, lock := preSyncSingleTime(common.TYPE_PARTITION, common.PARTITION_RUNNING)
+	defer afterSyncSingleTime(common.TYPE_PARTITION, common.PARTITION_FORCE_DONE)
+	GetTotalSize(&sn, config.SystemConfigCache.Cache.PartitionSync.SourcePath, true, lock)
+	lock.Done()
+	common.SendSignal2GWChannel(common.PARTITION_RUNNING)
+	defer common.SendSignal2GWChannel(common.PARTITION_FORCE_DONE)
 	batchSyncFile(
 		config.SystemConfigCache.Cache.PartitionSync.SourcePath,
 		config.SystemConfigCache.Cache.PartitionSync.TargetPath,
 		&sn,
 		true,
-	)
-}
-
-func startLocalBatchSync() {
-	sn := common.GetSNCount()
-	common.LocalBatchStartLock.Add(1)
-	common.CurrentLocalBatchSN = sn
-	initSizeMap(sn)
-	GetTotalSize(&sn, config.SystemConfigCache.Cache.LocalBatchSync.SourcePath, true, common.LocalBatchStartLock)
-	common.LocalBatchStartLock.Done()
-	batchSyncFile(
-		config.SystemConfigCache.Cache.LocalBatchSync.SourcePath,
-		config.SystemConfigCache.Cache.LocalBatchSync.TargetPath,
-		&sn,
-		false,
 	)
 }
 

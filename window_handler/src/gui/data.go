@@ -9,6 +9,8 @@ import (
 
 const isDev = true
 
+const NOT_RUNNING_STR = "Not running"
+
 var mainWin *fyne.Window
 var syncErrorDialog dialog.Dialog
 var syncErrorDialogOK = false

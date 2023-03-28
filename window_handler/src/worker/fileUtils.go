@@ -266,6 +266,11 @@ func GetNextSyncTime(dayArray [7]bool, min uint8, hour uint8) time.Duration {
 
 func GetTimeSum(daySub int, hourSub int, minSub int) time.Duration {
 	var retTime time.Duration
+	var dayFlag = false
+	if minSub < 0 {
+		daySub = 7
+		dayFlag = true
+	}
 
 	if daySub < 0 {
 		daySub = daySub + 7
@@ -280,6 +285,9 @@ func GetTimeSum(daySub int, hourSub int, minSub int) time.Duration {
 	}
 
 	retTime = retTime + time.Duration(daySub*int(time.Hour*24))
+	if dayFlag {
+		retTime = retTime - time.Hour
+	}
 	retTime = retTime + time.Duration(hourSub*int(time.Hour))
 	retTime = retTime + time.Duration(minSub*int(time.Minute))
 	return retTime
@@ -287,11 +295,20 @@ func GetTimeSum(daySub int, hourSub int, minSub int) time.Duration {
 
 func getNextTimeFromConfig(isBatchSync bool, isRemoteSync bool, isPartition bool) time.Duration {
 	configCache := config.SystemConfigCache.GetSyncPolicy(isBatchSync, isRemoteSync, isPartition)
-	return GetNextSyncTime(
+	nextTime := GetNextSyncTime(
 		configCache.TimingSync.Days,
 		configCache.TimingSync.Minute,
 		configCache.TimingSync.Hour,
 	)
+	if nextTime == 0 {
+		time.Sleep(61 * time.Second)
+	}
+	nextTime = GetNextSyncTime(
+		configCache.TimingSync.Days,
+		configCache.TimingSync.Minute,
+		configCache.TimingSync.Hour,
+	)
+	return nextTime
 }
 
 // getClosetDaySub 比较日期差，获取最近的那个日期
@@ -429,4 +446,14 @@ func EstimatedTotalTime(sn string, timeCell time.Duration) time.Duration {
 	}
 	tTime := (getTotalSize(sn) - getDoneSize(sn)) / speed
 	return time.Duration(tTime * uint64(time.Second))
+}
+
+func GetFileName(path string) string {
+	f, err := OpenFile(path, false)
+	fInfo, _ := f.Stat()
+	defer CloseFile(f)
+	if err == nil {
+		return fInfo.Name()
+	}
+	return ""
 }

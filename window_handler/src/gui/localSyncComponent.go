@@ -1,7 +1,6 @@
 package gui
 
 import (
-	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
@@ -20,8 +19,12 @@ var FileSyncComponent fyne.CanvasObject
 var (
 	localSingleSyncComponent       fyne.CanvasObject
 	localSingleSyncPolicyComponent *widget.Button
+	localSingleStartButton         *widget.Button
+	createFileComponent            *widget.Check
+	localSingleProgressBox         *fyne.Container
 	localSinglePolicySyncBox       *fyne.Container
-	localSinglePolicySyncPro       *fyne.Container
+	localSingleCurrentFile         *widget.Label
+	localSingleTimeRemaining       *widget.Label
 	slcOnce                        sync.Once
 )
 
@@ -30,8 +33,6 @@ var (
 	localBatchSyncPolicyComponent *widget.Button
 	localBatchStartButton         *widget.Button
 	localBatchPolicySyncBox       *fyne.Container
-	localBatchPolicySyncPro       *fyne.Container
-	localBatchProgressBar         *fyne.Container
 	localBatchProgressBox         *fyne.Container
 	localBatchCurrentFile         *widget.Label
 	localBatchTimeRemaining       *widget.Label
@@ -41,10 +42,8 @@ var (
 var (
 	partitionSyncComponent       fyne.CanvasObject
 	partitionSyncPolicyComponent *widget.Button
-	partitionProgressBar         *fyne.Container
 	partitionProgressBox         *fyne.Container
 	partitionPolicySyncBox       *fyne.Container
-	partitionPolicySyncPro       *fyne.Container
 	partitionStartButton         *widget.Button
 	partitionCurrentFile         *widget.Label
 	partitionTimeRemaining       *widget.Label
@@ -62,40 +61,52 @@ func getSingleLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 		)
 
 		targetPathBind := getBindString(config.SystemConfigCache.Value().LocalSingleSync.TargetPath)
-		targetContainer := loadValue2Label("Target: ", targetPathBind)
+		localSingleTargetComponent := loadValue2Label("Target: ", targetPathBind)
 
 		targetFileBtn := makeOpenFileBtn("Open", win, targetPathBind, &config.SystemConfigCache.Cache.LocalSingleSync.TargetPath)
 		targetFolderBtn := makeOpenFolderBtn("Open", win, targetPathBind, &config.SystemConfigCache.Cache.LocalSingleSync.TargetPath)
 		btnComponent := container.NewMax()
-		btnComponent.Add(targetFolderBtn)
+		btnComponent.Add(targetFileBtn)
 
-		createFileComponent := widget.NewCheck("Create New File", func(b bool) {
+		createFileComponent = widget.NewCheck("Create New File", func(b bool) {
+			btnComponent.RemoveAll()
 			if b {
-				btnComponent.Remove(targetFileBtn)
 				btnComponent.Add(targetFolderBtn)
 			} else {
-				btnComponent.Remove(targetFolderBtn)
 				btnComponent.Add(targetFileBtn)
 			}
+			btnComponent.Refresh()
 		})
 
 		targetPathComponent := container.New(layout.NewHBoxLayout(),
-			targetContainer,
+			localSingleTargetComponent,
 			btnComponent,
 			createFileComponent,
 		)
+		localSingleProgressBox = container.NewVBox()
+		localSinglePolicySyncBox = container.NewVBox()
+		localSingleCurrentFile = widget.NewLabel(NOT_RUNNING_STR)
+		currentFileComp := container.NewHBox(
+			widget.NewLabel("Current sync file:"),
+			localSingleCurrentFile,
+		)
+		localSingleTimeRemaining = widget.NewLabel(NOT_RUNNING_STR)
+		lbTimeComp := container.NewHBox(
+			widget.NewLabel("Time remaining:"),
+			localSingleTimeRemaining,
+		)
 		localSingleSyncPolicyComponent = getSingleSyncPolicyBtn(win, false)
 
-		lspPro := widget.NewProgressBarInfinite()
-		localSinglePolicySyncPro = container.NewVBox(lspPro)
-
 		localSinglePolicySyncBox = container.NewVBox()
-
+		localSingleStartButton = getStartLocalSingleButton(win)
 		localSingleSyncComponent = container.NewVBox(
 			sourcePathComponent,
 			targetPathComponent,
-			getStartLocalSingleButton(win),
+			currentFileComp,
+			lbTimeComp,
+			localSingleStartButton,
 			localSingleSyncPolicyComponent,
+			localSingleProgressBox,
 		)
 	})
 
@@ -118,21 +129,18 @@ func getBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 			targetPathBind,
 			&config.SystemConfigCache.Cache.LocalBatchSync.TargetPath))
 
-		lbspPro := widget.NewProgressBarInfinite()
-		localBatchPolicySyncPro = container.NewVBox(lbspPro)
-
 		initStartLocalBatchButton(win)
 
 		localBatchProgressBox = container.NewVBox()
 		localBatchPolicySyncBox = container.NewVBox()
 		localBatchSyncPolicyComponent = getBatchSyncPolicyBtn(win, false)
 
-		localBatchCurrentFile = widget.NewLabel("Not running")
+		localBatchCurrentFile = widget.NewLabel(NOT_RUNNING_STR)
 		currentFileComp := container.NewHBox(
 			widget.NewLabel("Current sync file:"),
 			localBatchCurrentFile,
 		)
-		localBatchTimeRemaining = widget.NewLabel("Not running")
+		localBatchTimeRemaining = widget.NewLabel(NOT_RUNNING_STR)
 		lbTimeComp := container.NewHBox(
 			widget.NewLabel("Time remaining:"),
 			localBatchTimeRemaining,
@@ -169,12 +177,12 @@ func getPartitionSyncComponent(win fyne.Window) fyne.CanvasObject {
 		}
 		tPartitionSelect.Selected = config.SystemConfigCache.Cache.PartitionSync.TargetPath
 		initPartitionSyncStartBtn(win)
-		partitionCurrentFile = widget.NewLabel("Not running")
+		partitionCurrentFile = widget.NewLabel(NOT_RUNNING_STR)
 		currentFileComp := container.NewHBox(
 			widget.NewLabel("Current sync file:"),
 			partitionCurrentFile,
 		)
-		partitionTimeRemaining = widget.NewLabel("Not running")
+		partitionTimeRemaining = widget.NewLabel(NOT_RUNNING_STR)
 		partitionTimeComp := container.NewHBox(
 			widget.NewLabel("Time remaining:"),
 			partitionTimeRemaining,
@@ -183,9 +191,6 @@ func getPartitionSyncComponent(win fyne.Window) fyne.CanvasObject {
 		partitionPolicySyncBox = container.NewVBox()
 
 		partitionSyncPolicyComponent = getPartitionSyncPolicyBtn(win)
-
-		lbspPro := widget.NewProgressBarInfinite()
-		partitionPolicySyncPro = container.NewVBox(lbspPro)
 
 		partitionSyncComponent = container.NewVBox(
 			sPartitionComp,
@@ -208,15 +213,14 @@ func initPartitionSyncStartBtn(win fyne.Window) {
 			dialog.ShowInformation("Error", "Please set source and target path!", win)
 			return
 		}
-		common.LocalPartStartLock.Add(1)
-		partitionProgressBar = getTaskProgressBar(partitionStartButton, partitionProgressBar, partitionProgressBox, true)
+		common.GetStartLock(common.TYPE_PARTITION).Add(1)
 		//TODO 优化协程池
 		go func() {
 			log.Printf("PartitionSync Start Time : %v:%v:%v", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
 			worker.PartitionSyncSingleTime()
 			log.Printf("PartitionSync Over Time : %v:%v:%v", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
 		}()
-		common.LocalPartStartLock.Done()
+		common.GetStartLock(common.TYPE_PARTITION).Done()
 	})
 }
 
@@ -227,77 +231,30 @@ func initStartLocalBatchButton(win fyne.Window) {
 			dialog.ShowInformation("Error", "Please set source and target path!", win)
 			return
 		}
-		common.LocalBatchStartLock.Add(1)
-		localBatchProgressBar = getTaskProgressBar(localBatchStartButton, localBatchProgressBar, localBatchProgressBox, false)
+		common.GetStartLock(common.TYPE_LOCAL_BATCH).Add(1)
 		//TODO 优化协程池
 		go worker.LocalBatchSyncSingleTime(false)
-		common.LocalBatchStartLock.Done()
+		common.GetStartLock(common.TYPE_LOCAL_BATCH).Done()
 	})
 }
 
 func getStartLocalSingleButton(win fyne.Window) *widget.Button {
 	button := widget.NewButton("Start", func() {
-		if config.SystemConfigCache.Cache.LocalSingleSync.TargetPath == config.NOT_SET_STR ||
-			config.SystemConfigCache.Cache.LocalSingleSync.SourcePath == config.NOT_SET_STR {
+		targetPath := config.SystemConfigCache.Cache.LocalSingleSync.TargetPath
+		sourcePath := config.SystemConfigCache.Cache.LocalSingleSync.SourcePath
+		if targetPath == config.NOT_SET_STR ||
+			sourcePath == config.NOT_SET_STR {
 			dialog.ShowInformation("Error", "Please set source and target path!", win)
 			return
+		}
+		if createFileComponent.Checked {
+			fileName := worker.GetFileName(sourcePath)
+			config.SystemConfigCache.Cache.LocalSingleSync.TargetPath = targetPath + "/" + fileName
+			createFileComponent.Checked = false
 		}
 		go worker.LocalSingleSyncSingleTime(false)
 	})
 	return button
-}
-
-func getTaskProgressBar(startBtn *widget.Button, progressBar *fyne.Container, progressBox *fyne.Container, isPartition bool) *fyne.Container {
-	startBtn.Disable()
-	progress := widget.NewProgressBar()
-	progressBox.Add(progress)
-	go func() {
-		time.Sleep(time.Millisecond * 500)
-		var progressNum = 0.0
-		var currentFileLabel *widget.Label
-		var currentSN string
-		var currentTimeRemaining *widget.Label
-		if isPartition {
-			common.LocalPartStartLock.Wait()
-			currentFileLabel = partitionCurrentFile
-			currentTimeRemaining = partitionTimeRemaining
-			currentSN = common.CurrentLocalPartSN
-		} else {
-			common.LocalBatchStartLock.Wait()
-			currentFileLabel = localBatchCurrentFile
-			currentTimeRemaining = localBatchTimeRemaining
-			currentSN = common.CurrentLocalBatchSN
-		}
-		go func() {
-			currentTimeRemaining.SetText("Under calculation")
-			for {
-				remaining := worker.EstimatedTotalTime(currentSN, 10*time.Second)
-				if remaining <= 0 {
-					return
-				}
-				currentTimeRemaining.SetText(fmt.Sprint(remaining))
-			}
-		}()
-		for progressNum < 1 {
-			time.Sleep(time.Millisecond * 100)
-			currentFileLabel.SetText(common.GetCurrentSyncFile(currentSN))
-			progressNum = worker.GetLocalBatchProgress(currentSN)
-			currentFileLabel.Refresh()
-			progress.SetValue(progressNum)
-			err := worker.GetBatchSyncError(currentSN)
-			if len(err) != 0 {
-				log.Println()
-			}
-		}
-		currentFileLabel.SetText("Not running")
-		currentTimeRemaining.SetText("Not running")
-		time.Sleep(time.Second * 3)
-		progressBox.Remove(progress)
-		progressBox.Refresh()
-		startBtn.Enable()
-		currentFileLabel.Refresh()
-	}()
-	return container.NewVBox(progress)
 }
 
 func getFileTree() fyne.CanvasObject {
