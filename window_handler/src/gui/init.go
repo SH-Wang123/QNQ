@@ -171,28 +171,20 @@ func watchGWChannel() {
 		select {
 		case c := <-common.GWChannel:
 			if c == common.LOCAL_BATCH_RUNNING {
-				batchDisable(localBatchSyncPolicyComponent, localBatchStartButton)
-				showSyncError(common.TYPE_LOCAL_BATCH)
 				localBatchRunningHandle()
 			} else if c == common.LOCAL_BATCH_FORCE_DONE {
-				batchEnable(localBatchSyncPolicyComponent, localBatchStartButton)
 				localBatchDoneHandle()
 			} else if c == common.LOCAL_SINGLE_RUNNING {
-				batchDisable(localSingleSyncPolicyComponent, localSingleStartButton)
-				showSyncError(common.TYPE_LOCAL_SING)
 				localSingleRunningHandle()
 			} else if c == common.LOCAL_SINGLE_FORCE_DONE {
-				batchEnable(localSingleSyncPolicyComponent, localSingleStartButton)
 				localSingleDoneHandle()
 			} else if c == common.TEST_DISK_SPEED_START {
 				testSpeedRetLab.SetText("Testing...")
 			} else if c == common.TEST_DISK_SPEED_OVER {
 				setDiskSpeedRet()
 			} else if c == common.PARTITION_RUNNING {
-				batchDisable(partitionSyncPolicyComponent, partitionStartButton)
 				partitionRunningHandle()
 			} else if c == common.PARTITION_FORCE_DONE {
-				batchEnable(partitionSyncPolicyComponent, partitionStartButton)
 				partitionDoneHandle()
 			}
 		}
@@ -207,26 +199,38 @@ func setDiskSpeedRet() {
 }
 
 func localBatchRunningHandle() {
+	batchDisable(localBatchSyncPolicyComponent, localBatchStartButton)
+	batchEnable(localBatchCancelButton)
+	showSyncError(common.TYPE_LOCAL_BATCH)
 	startSyncGUI(localBatchProgressBox, localBatchCurrentFile, localBatchTimeRemaining, common.TYPE_LOCAL_BATCH)
 }
 
 func localBatchDoneHandle() {
+	batchEnable(localBatchSyncPolicyComponent, localBatchStartButton)
+	batchDisable(localBatchCancelButton)
 	overSyncGUI(localBatchProgressBox, localBatchCurrentFile, localBatchTimeRemaining)
 }
 
 func localSingleRunningHandle() {
+	batchDisable(localSingleSyncPolicyComponent, localSingleStartButton)
+	showSyncError(common.TYPE_LOCAL_SING)
 	startSyncGUI(localSingleProgressBox, localSingleCurrentFile, localSingleTimeRemaining, common.TYPE_LOCAL_SING)
 }
 
 func localSingleDoneHandle() {
+	batchEnable(localSingleSyncPolicyComponent, localSingleStartButton)
 	overSyncGUI(localSingleProgressBox, localSingleCurrentFile, localSingleTimeRemaining)
 }
 
 func partitionRunningHandle() {
+	batchDisable(partitionSyncPolicyComponent, partitionStartButton)
+	batchEnable(partitionCancelButton)
 	startSyncGUI(partitionProgressBox, partitionCurrentFile, partitionTimeRemaining, common.TYPE_PARTITION)
 }
 
 func partitionDoneHandle() {
+	batchEnable(partitionSyncPolicyComponent, partitionStartButton)
+	batchDisable(partitionCancelButton)
 	overSyncGUI(partitionProgressBox, partitionCurrentFile, partitionTimeRemaining)
 }
 

@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-var CLI_FALG = false
+var CLI_FLAG = false
 
 var (
 	currentLocalPartSN string
@@ -45,7 +45,7 @@ var partitionRunningFlag = false
 func SendSignal2GWChannel(signal int) {
 	gwLock.Lock()
 	defer gwLock.Unlock()
-	if CLI_FALG {
+	if CLI_FLAG {
 
 	} else {
 		GWChannel <- signal

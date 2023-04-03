@@ -40,7 +40,7 @@ func NewLocalSingleWorker(sourceFile *os.File, targetFile *os.File, sn string) *
 	return &common.QWorker{
 		SN:              sn,
 		Sub:             nil,
-		ExecuteFunc:     LocalSyncSingleFile,
+		ExecuteFunc:     localSyncSingleFile,
 		DeconstructFunc: closeAndCheckFile,
 		PrivateFile:     sourceFile,
 		TargetFile:      targetFile,
@@ -85,6 +85,17 @@ func batchSyncFile(startPath string, targetPath string, sn *string, isPartition 
 	children, _ := sf.Readdir(-1)
 	CloseFile(sf, tf)
 	ReverseCompareAndDelete(startPath, targetPath)
+	if isPartition {
+		if !common.GetRunningFlag(common.TYPE_PARTITION) {
+			cancelTask(common.TYPE_PARTITION, common.PARTITION_FORCE_DONE)
+			return
+		}
+	} else {
+		if !common.GetRunningFlag(common.TYPE_LOCAL_BATCH) {
+			cancelTask(common.TYPE_LOCAL_BATCH, common.LOCAL_BATCH_FORCE_DONE)
+			return
+		}
+	}
 	for _, child := range children {
 		targetAbsPath := targetPath + fileSeparator + child.Name()
 		sourceAbsPath := startPath + fileSeparator + child.Name()
@@ -155,6 +166,15 @@ func LocalBatchSyncSingleTime(isPolicy bool) {
 		&sn,
 		false,
 	)
+}
+
+func cancelTask(busType int, doneTag int) {
+	afterSyncSingleTime(busType, doneTag)
+}
+
+// CancelTask 由外界强制设置任务终止标志
+func CancelTask(busType int) {
+	common.SetRunningFlag(busType, false)
 }
 
 // LocalSingleSyncSingleTime 直接读取配置文件，无需参数
@@ -295,8 +315,6 @@ func PartitionSyncSingleTime() {
 	defer afterSyncSingleTime(common.TYPE_PARTITION, common.PARTITION_FORCE_DONE)
 	GetTotalSize(&sn, config.SystemConfigCache.Cache.PartitionSync.SourcePath, true, lock)
 	lock.Done()
-	common.SendSignal2GWChannel(common.PARTITION_RUNNING)
-	defer common.SendSignal2GWChannel(common.PARTITION_FORCE_DONE)
 	batchSyncFile(
 		config.SystemConfigCache.Cache.PartitionSync.SourcePath,
 		config.SystemConfigCache.Cache.PartitionSync.TargetPath,
@@ -324,7 +342,7 @@ func getSingleTargetFile(sf *os.File, targetPath string) *os.File {
 	return tf
 }
 
-func LocalSyncSingleFile(msg interface{}, q *common.QWorker) {
+func localSyncSingleFile(msg interface{}, q *common.QWorker) {
 	buf := make([]byte, 4096*2)
 	common.SetCurrentSyncFile(q.SN, SYNC_RUNNING, q.PrivateFile.Name())
 	for {

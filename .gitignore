@@ -15,3 +15,4 @@ window_handler/src/ut_temp/
 .idea/vcs.xml
 .idea/modules.xml
 window_handler/src/go.sum
+window_handler/src/bin/*

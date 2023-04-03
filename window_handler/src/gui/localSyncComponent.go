@@ -32,6 +32,7 @@ var (
 	localBatchSyncComponent       fyne.CanvasObject
 	localBatchSyncPolicyComponent *widget.Button
 	localBatchStartButton         *widget.Button
+	localBatchCancelButton        *widget.Button
 	localBatchPolicySyncBox       *fyne.Container
 	localBatchProgressBox         *fyne.Container
 	localBatchCurrentFile         *widget.Label
@@ -45,6 +46,7 @@ var (
 	partitionProgressBox         *fyne.Container
 	partitionPolicySyncBox       *fyne.Container
 	partitionStartButton         *widget.Button
+	partitionCancelButton        *widget.Button
 	partitionCurrentFile         *widget.Label
 	partitionTimeRemaining       *widget.Label
 	psOnce                       sync.Once
@@ -130,6 +132,7 @@ func getBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 			&config.SystemConfigCache.Cache.LocalBatchSync.TargetPath))
 
 		initStartLocalBatchButton(win)
+		localBatchCancelButton = getCancelButton(common.TYPE_LOCAL_BATCH)
 
 		localBatchProgressBox = container.NewVBox()
 		localBatchPolicySyncBox = container.NewVBox()
@@ -154,6 +157,7 @@ func getBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 			),
 			localBatchStartButton,
 			localBatchSyncPolicyComponent,
+			localBatchCancelButton,
 			localBatchProgressBox,
 			localBatchPolicySyncBox,
 		)
@@ -177,6 +181,7 @@ func getPartitionSyncComponent(win fyne.Window) fyne.CanvasObject {
 		}
 		tPartitionSelect.Selected = config.SystemConfigCache.Cache.PartitionSync.TargetPath
 		initPartitionSyncStartBtn(win)
+		partitionCancelButton = getCancelButton(common.TYPE_PARTITION)
 		partitionCurrentFile = widget.NewLabel(NOT_RUNNING_STR)
 		currentFileComp := container.NewHBox(
 			widget.NewLabel("Current sync file:"),
@@ -199,6 +204,7 @@ func getPartitionSyncComponent(win fyne.Window) fyne.CanvasObject {
 			partitionTimeComp,
 			partitionStartButton,
 			partitionSyncPolicyComponent,
+			partitionCancelButton,
 			partitionProgressBox,
 			partitionPolicySyncBox,
 		)
@@ -214,7 +220,6 @@ func initPartitionSyncStartBtn(win fyne.Window) {
 			return
 		}
 		common.GetStartLock(common.TYPE_PARTITION).Add(1)
-		//TODO 优化协程池
 		go func() {
 			log.Printf("PartitionSync Start Time : %v:%v:%v", time.Now().Hour(), time.Now().Minute(), time.Now().Second())
 			worker.PartitionSyncSingleTime()

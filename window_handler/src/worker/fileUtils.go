@@ -19,7 +19,6 @@ func OpenFile(filePath string, createFile bool) (*os.File, error) {
 	var f *os.File
 	var err error
 	if createFile {
-		DeleteFileOrDir(filePath)
 		f, err = os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0777)
 	} else {
 		f, err = os.Open(filePath)
@@ -204,7 +203,7 @@ func randomPalindrome(size CapacityUnit) []byte {
 }
 
 func ConvertCapacity(str string) CapacityUnit {
-	regFindNum, _ := regexp.Compile(`\d+\.\d+`)
+	regFindNum, _ := regexp.Compile(`\d+\.?\d*`)
 	numStr := regFindNum.FindAllString(str, -1)[0]
 	regFindUnit, _ := regexp.Compile(`[A-Z]+`)
 	unit := regFindUnit.FindAllString(str, -1)[0]

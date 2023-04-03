@@ -378,6 +378,9 @@ func startSyncGUI(progressBox *fyne.Container, currentFileLabel *widget.Label, c
 				if remaining <= 0 {
 					return
 				}
+				if !common.GetRunningFlag(businessType) {
+					return
+				}
 				currentTimeRemaining.SetText(fmt.Sprint(remaining))
 			}
 		}()
@@ -385,6 +388,9 @@ func startSyncGUI(progressBox *fyne.Container, currentFileLabel *widget.Label, c
 		for progressNum < 1 {
 			if currentSN == "" {
 				currentSN = common.GetCurrentSN(businessType)
+			}
+			if !common.GetRunningFlag(businessType) {
+				return
 			}
 			time.Sleep(time.Millisecond * 100)
 			currentFileLabel.SetText(common.GetCurrentSyncFile(currentSN))
@@ -396,7 +402,6 @@ func startSyncGUI(progressBox *fyne.Container, currentFileLabel *widget.Label, c
 				log.Println()
 			}
 		}
-
 		progressBox.Refresh()
 		currentFileLabel.Refresh()
 	}()
@@ -404,8 +409,18 @@ func startSyncGUI(progressBox *fyne.Container, currentFileLabel *widget.Label, c
 
 // overSyncGUI 同步进度条、当前文件、剩余时间隐藏
 func overSyncGUI(progressBox *fyne.Container, currentFileLabel *widget.Label, currentTimeRemaining *widget.Label) {
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 2)
 	progressBox.RemoveAll()
 	currentFileLabel.SetText(NOT_RUNNING_STR)
+	currentFileLabel.Refresh()
 	currentTimeRemaining.SetText(NOT_RUNNING_STR)
+	currentTimeRemaining.Refresh()
+}
+
+func getCancelButton(busType int) *widget.Button {
+	but := widget.NewButton("Cancel", func() {
+		worker.CancelTask(busType)
+	})
+	but.Disable()
+	return but
 }

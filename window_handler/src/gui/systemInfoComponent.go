@@ -59,7 +59,8 @@ func getTestDiskSpeedComponent(_ fyne.Window) fyne.CanvasObject {
 		fileSizeComp := getLabelSelect("Test size:    ", fileSizeSelect)
 		bufferSizeSelect := widget.NewSelect([]string{"512Byte", "1KB", "4KB", "8KB", "1MB", "4MB"}, nil)
 		bufferSizeComp := getLabelSelect("Buffer size: ", bufferSizeSelect)
-		partitionComp, speedPartitionSelect := getPartitionSelect("Partition:          ")
+		var partitionComp *fyne.Container
+		partitionComp, speedPartitionSelect = getPartitionSelect("Partition:          ")
 		errorText := widget.NewTextGridFromString("\nPlease select parameters!")
 		errorText.SetRowStyle(1, &widget.CustomTextGridStyle{FGColor: &color.NRGBA{R: 255, G: 0, B: 0, A: 255}, BGColor: color.White})
 		top := container.NewVBox(

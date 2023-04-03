@@ -14,7 +14,7 @@ func main() {
 	worker.GetPartitionsInfo()
 	//os.Setenv("FYNE_FONT", "msyh.ttc")
 	//config.GetTargetSystemInfo()
-	if common.CLI_FALG {
+	if common.CLI_FLAG {
 		cli.StartCli()
 	} else {
 		gui.StartGUI()
