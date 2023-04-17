@@ -402,7 +402,7 @@ func startSyncGUI(progressBox *fyne.Container, currentFileLabel *widget.Label, c
 			progress.SetValue(progressNum)
 			err := worker.GetBatchSyncError(currentSN)
 			if len(err) != 0 {
-				log.Println()
+				//log.Println()
 			}
 		}
 		progressBox.Refresh()

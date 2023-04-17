@@ -25,9 +25,9 @@ func OpenDir(filePath string) (*os.File, error) {
 
 func GetFileMd5(f *os.File) *string {
 	md5h := md5.New()
-	i, err := io.Copy(md5h, f)
+	_, err := io.Copy(md5h, f)
 	if err != nil {
-		log.Printf("%v", i)
+		log.Printf("%v", err)
 		return nil
 	}
 	md5Str := hex.EncodeToString(md5h.Sum(nil))

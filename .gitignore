@@ -17,3 +17,4 @@ window_handler/src/ut_temp/
 window_handler/src/go.sum
 window_handler/src/bin/*
 window_handler/src/test/system_config
+window_handler/src/OLog.csv
