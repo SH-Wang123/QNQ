@@ -39,6 +39,7 @@ const (
 	TYPE_PARTITION
 	TYPE_REMOTE_SINGLE
 	TYPE_REMOTE_BATCH
+	TYPE_CDP_SNAPSHOT
 )
 
 // channel signal
@@ -49,9 +50,24 @@ const (
 	LOCAL_SINGLE_FORCE_DONE
 	PARTITION_RUNNING
 	PARTITION_FORCE_DONE
+	CDP_SNAPSHOT_FORCE_DONE
 	TEST_DISK_SPEED_START
 	TEST_DISK_SPEED_OVER
 )
+
+func GetForceDoneSignal(busType int) int {
+	switch busType {
+	case TYPE_LOCAL_BATCH:
+		return LOCAL_BATCH_FORCE_DONE
+	case TYPE_LOCAL_SING:
+		return LOCAL_SINGLE_FORCE_DONE
+	case TYPE_PARTITION:
+		return PARTITION_FORCE_DONE
+	case TYPE_CDP_SNAPSHOT:
+		return CDP_SNAPSHOT_FORCE_DONE
+	}
+	return -1
+}
 
 const TaskOverFlag = "1"
 const RemoteSingleSyncType = "0x010"
@@ -68,6 +84,7 @@ type QWorker struct {
 	PrivateFile     *os.File //usually source file
 	TargetFile      *os.File
 	PrivateNet      os.File
+	Md5CacheFlag    bool
 }
 
 func (w *QWorker) Deconstruct() {

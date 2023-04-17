@@ -12,94 +12,24 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"window_handler/common"
 	"window_handler/config"
 )
 
-func OpenFile(filePath string, createFile bool) (*os.File, error) {
-	var f *os.File
-	var err error
-	if createFile {
-		f, err = os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0777)
-	} else {
-		f, err = os.Open(filePath)
-	}
-	if err != nil {
-		log.Printf("Open %v err : %v", filePath, err.Error())
-		return nil, err
-	}
-	return f, nil
-}
+var sfMd5Cache = make(map[string]map[string]*string)
 
 func OpenDir(filePath string) (*os.File, error) {
 	f, err := os.Open(filePath)
 	return f, err
 }
 
-func CloseFile(fs ...*os.File) {
-	for _, f := range fs {
-		err := f.Close()
-		if err != nil {
-			log.Printf("close file err : %v", err.Error())
-		}
-	}
-}
-
-func IsExist(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
-}
-
-func CreateDir(path string, perm *os.FileMode) {
-	exist, err := IsExist(path)
-	if err != nil {
-		log.Printf("get dir exist error : %v", err)
-	}
-	if !exist {
-		err = os.Mkdir(path, *perm)
-		if err != nil {
-			log.Printf("create dir error : %v", err)
-		}
-	} else {
-		err := os.Chmod(path, *perm)
-		if err != nil {
-			log.Printf("Set folder perm err: %v", err)
-		}
-	}
-}
-
-func DeleteFileOrDir(path string) {
-	exist, err := IsExist(path)
-	f, _ := OpenFile(path, false)
-	fChild, _ := f.Readdir(-1)
-	CloseFile(f)
-	if err != nil {
-		log.Printf("get file error : %v", err)
-	}
-	if exist {
-		if len(fChild) == 0 {
-			err = os.Remove(path)
-		} else {
-			err = os.RemoveAll(path)
-		}
-	}
-	if err != nil {
-		log.Printf("delte file error : %v", err)
-	}
-}
-
-func IsOpenDirError(err error, path string) bool {
-	return err.Error() == "open "+path+": is a directory"
-}
-
 func GetFileMd5(f *os.File) *string {
 	md5h := md5.New()
-	io.Copy(md5h, f)
+	i, err := io.Copy(md5h, f)
+	if err != nil {
+		log.Printf("%v", i)
+		return nil
+	}
 	md5Str := hex.EncodeToString(md5h.Sum(nil))
 	return &md5Str
 }
@@ -107,7 +37,19 @@ func GetFileMd5(f *os.File) *string {
 func CompareMd5(sf *os.File, tf *os.File) bool {
 	sfMd5Ptr := GetFileMd5(sf)
 	tfMd5Ptr := GetFileMd5(tf)
-	return *sfMd5Ptr == *tfMd5Ptr
+	return sfMd5Ptr == tfMd5Ptr
+}
+
+func CompareAndCacheMd5(sf *os.File, tf *os.File, sn *string, cacheFlag bool) bool {
+	sfMd5Ptr := GetFileMd5(sf)
+	if cacheFlag {
+		if sfMd5Cache[*sn] == nil {
+			sfMd5Cache[*sn] = make(map[string]*string)
+		}
+		sfMd5Cache[*sn][sf.Name()] = sfMd5Ptr
+	}
+	tfMd5Ptr := GetFileMd5(tf)
+	return sfMd5Ptr == tfMd5Ptr
 }
 
 func CompareModifyTime(sf *os.File, tf *os.File) bool {
@@ -138,12 +80,12 @@ func stringToUint64(s string) (uint64, error) {
 
 // fileSize : KB
 func CreateFile(bufferSize CapacityUnit, filePath string, fileSize CapacityUnit, randomContent bool) (success bool, usedTime float64) {
-	exist, err := IsExist(filePath)
+	exist, err := common.IsExist(filePath)
 	if exist {
 		return false, 1
 	}
 
-	f, err := OpenFile(filePath, true)
+	f, err := common.OpenFile(filePath, true)
 	if err != nil {
 		return false, 1
 	}
@@ -165,12 +107,12 @@ func CreateFile(bufferSize CapacityUnit, filePath string, fileSize CapacityUnit,
 }
 
 func ReadFile(filePath string, bufferSize CapacityUnit) (success bool, usedTime float64) {
-	exist, _ := IsExist(filePath)
+	exist, _ := common.IsExist(filePath)
 	if !exist {
 		return false, 1
 	}
 	startTime := time.Now()
-	f, err := OpenFile(filePath, true)
+	f, err := common.OpenFile(filePath, true)
 	if err != nil {
 		return false, 1
 	}
@@ -369,14 +311,14 @@ func GetFileRootTree(root string) {
 }
 
 func ReverseCompareAndDelete(sourcePath string, targetPath string) {
-	exist0, err0 := IsExist(sourcePath)
-	exist1, err1 := IsExist(targetPath)
+	exist0, err0 := common.IsExist(sourcePath)
+	exist1, err1 := common.IsExist(targetPath)
 	if err0 != nil || err1 != nil || !exist0 || !exist1 {
 		return
 	}
-	sf, _ := OpenFile(sourcePath, false)
-	tf, _ := OpenFile(targetPath, false)
-	defer CloseFile(tf, sf)
+	sf, _ := common.OpenFile(sourcePath, false)
+	tf, _ := common.OpenFile(targetPath, false)
+	defer common.CloseFile(tf, sf)
 	sfChildMap := make(map[string]int)
 	tfChild, _ := tf.Readdir(-1)
 	sfChild, _ := sf.Readdir(-1)
@@ -385,7 +327,7 @@ func ReverseCompareAndDelete(sourcePath string, targetPath string) {
 	}
 	for _, child := range tfChild {
 		if sfChildMap[child.Name()] == 0 {
-			DeleteFileOrDir(targetPath + fileSeparator + child.Name())
+			common.DeleteFileOrDir(targetPath + fileSeparator + child.Name())
 		}
 	}
 }
@@ -417,7 +359,7 @@ func GetTotalSize(sn *string, startPath string, isRoot bool, lock *sync.WaitGrou
 		return
 	}
 	children, _ := f.Readdir(-1)
-	CloseFile(f)
+	common.CloseFile(f)
 	for _, child := range children {
 		if child.IsDir() {
 			if isRoot {
@@ -448,11 +390,34 @@ func EstimatedTotalTime(sn string, timeCell time.Duration) time.Duration {
 }
 
 func GetFileName(path string) string {
-	f, err := OpenFile(path, false)
+	f, err := common.OpenFile(path, false)
 	fInfo, _ := f.Stat()
-	defer CloseFile(f)
+	defer common.CloseFile(f)
 	if err == nil {
 		return fInfo.Name()
 	}
 	return ""
+}
+
+func clearSfMd5Cache(sn *string) {
+	sfMd5Cache[*sn] = make(map[string]*string)
+}
+
+func getSfMd5Cache(sn *string) map[string]*string {
+	return sfMd5Cache[*sn]
+}
+
+func recordLog(busType int, startTime string, target string, source string) {
+	if !config.SystemConfigCache.Value().SystemSetting.EnableOLog {
+		return
+	}
+	overTime := getNowTimeStr()
+	logStr := config.GetOLogType(busType) + "," + startTime + "," + overTime + ",success," + target + "," + source
+	config.AddOLog(logStr)
+}
+
+func getNowTimeStr() string {
+	now := time.Now()
+	ret := fmt.Sprintf("%v", now.Format("2006/01/02 15:04:05"))
+	return ret
 }

@@ -34,9 +34,10 @@ var (
 var (
 	COMPARE_RUNNING = "[Comparing] "
 	SYNC_RUNNING    = "[Syncing] "
+	VERIFY_MD5      = "[Verify MD5] "
 )
 
-func NewLocalSingleWorker(sourceFile *os.File, targetFile *os.File, sn string) *common.QWorker {
+func NewLocalSingleWorker(sourceFile *os.File, targetFile *os.File, sn string, md5CacheFlag bool) *common.QWorker {
 	return &common.QWorker{
 		SN:              sn,
 		Sub:             nil,
@@ -44,6 +45,7 @@ func NewLocalSingleWorker(sourceFile *os.File, targetFile *os.File, sn string) *
 		DeconstructFunc: closeAndCheckFile,
 		PrivateFile:     sourceFile,
 		TargetFile:      targetFile,
+		Md5CacheFlag:    md5CacheFlag,
 	}
 }
 
@@ -70,40 +72,33 @@ func GetFileTreeMap(node *FileNode, data *map[string][]string) {
 	}
 }
 
-func batchSyncFile(startPath string, targetPath string, sn *string, isPartition bool) {
+func batchSyncFile(startPath string, targetPath string, sn *string, busType int, loadMd5Cache bool) {
 	sf, err1 := OpenDir(startPath)
 	if err1 != nil {
 		return
 	}
 	sfInfo, _ := sf.Stat()
 	sfMode := sfInfo.Mode()
-	CreateDir(targetPath, &sfMode)
+	common.CreateDir(targetPath, &sfMode)
 	tf, err2 := OpenDir(targetPath)
 	if err1 != nil || err2 != nil {
 		return
 	}
 	children, _ := sf.Readdir(-1)
-	CloseFile(sf, tf)
+	common.CloseFile(sf, tf)
 	ReverseCompareAndDelete(startPath, targetPath)
-	if isPartition {
-		if !common.GetRunningFlag(common.TYPE_PARTITION) {
-			cancelTask(common.TYPE_PARTITION, common.PARTITION_FORCE_DONE)
-			return
-		}
-	} else {
-		if !common.GetRunningFlag(common.TYPE_LOCAL_BATCH) {
-			cancelTask(common.TYPE_LOCAL_BATCH, common.LOCAL_BATCH_FORCE_DONE)
-			return
-		}
+	if !common.GetRunningFlag(busType) {
+		cancelTask(busType, common.GetForceDoneSignal(busType))
+		return
 	}
 	for _, child := range children {
 		targetAbsPath := targetPath + fileSeparator + child.Name()
 		sourceAbsPath := startPath + fileSeparator + child.Name()
 		if !child.IsDir() {
 			if child.Size() <= 512*int64(MB) {
-				isExist, _ := IsExist(targetAbsPath)
-				tf, err3 := OpenFile(targetAbsPath, true)
-				rsf, err4 := OpenFile(sourceAbsPath, false)
+				isExist, _ := common.IsExist(targetAbsPath)
+				tf, err3 := common.OpenFile(targetAbsPath, true)
+				rsf, err4 := common.OpenFile(sourceAbsPath, false)
 				if err3 != nil || err4 != nil {
 					log.Printf("sf err: %v, tf err: %v", err4, err3)
 					continue
@@ -112,36 +107,36 @@ func batchSyncFile(startPath string, targetPath string, sn *string, isPartition 
 				if isExist && CompareMd5(tf, rsf) {
 					fInfo, _ := tf.Stat()
 					addSizeToDoneMap(*sn, uint64(fInfo.Size()))
-					CloseFile(tf, rsf)
+					common.CloseFile(tf, rsf)
 					continue
 				}
 				//reopen file
-				CloseFile(tf, rsf)
+				common.CloseFile(tf, rsf)
 			}
-			tf, errT := OpenFile(targetAbsPath, true)
-			rsf, errS := OpenFile(sourceAbsPath, false)
+			tf, errT := common.OpenFile(targetAbsPath, true)
+			rsf, errS := common.OpenFile(sourceAbsPath, false)
 			//common.GetCoroutinesPool().Submit(worker.Execute())
 			if errT == nil && errS == nil {
-				worker := NewLocalSingleWorker(rsf, tf, *sn)
+				worker := NewLocalSingleWorker(rsf, tf, *sn, loadMd5Cache)
 				worker.Execute()
 			} else {
-				CloseFile(rsf, tf)
+				common.CloseFile(rsf, tf)
 			}
 		} else {
-			batchSyncFile(sourceAbsPath, targetAbsPath, sn, isPartition)
+			batchSyncFile(sourceAbsPath, targetAbsPath, sn, busType, loadMd5Cache)
 		}
 	}
 }
 
-func preSyncSingleTime(busType int, runningTag int) (string, *sync.WaitGroup) {
-	sn := common.GetSNCount()
-	lock := common.GetStartLock(busType)
+func preSyncSingleTime(busType int, runningTag int) (sn string, lock *sync.WaitGroup, startTime string) {
+	sn = common.GetSNCount()
+	lock = common.GetStartLock(busType)
 	lock.Add(1)
 	common.SetCurrentSN(busType, sn)
 	common.SetRunningFlag(busType, true)
 	common.SendSignal2GWChannel(runningTag)
 	initSizeMap(sn)
-	return sn, lock
+	return sn, lock, getNowTimeStr()
 }
 
 func afterSyncSingleTime(busType int, doneTag int) {
@@ -156,7 +151,7 @@ func LocalBatchSyncSingleTime(isPolicy bool) {
 			return
 		}
 	}
-	sn, lock := preSyncSingleTime(common.TYPE_LOCAL_BATCH, common.LOCAL_BATCH_RUNNING)
+	sn, lock, startTime := preSyncSingleTime(common.TYPE_LOCAL_BATCH, common.LOCAL_BATCH_RUNNING)
 	defer afterSyncSingleTime(common.TYPE_LOCAL_BATCH, common.LOCAL_BATCH_FORCE_DONE)
 	GetTotalSize(&sn, config.SystemConfigCache.Cache.LocalBatchSync.SourcePath, true, lock)
 	lock.Done()
@@ -164,8 +159,14 @@ func LocalBatchSyncSingleTime(isPolicy bool) {
 		config.SystemConfigCache.Cache.LocalBatchSync.SourcePath,
 		config.SystemConfigCache.Cache.LocalBatchSync.TargetPath,
 		&sn,
+		common.TYPE_LOCAL_BATCH,
 		false,
 	)
+	recordLog(
+		common.TYPE_LOCAL_BATCH,
+		startTime,
+		config.SystemConfigCache.Cache.LocalBatchSync.TargetPath,
+		config.SystemConfigCache.Cache.LocalBatchSync.SourcePath)
 }
 
 func cancelTask(busType int, doneTag int) {
@@ -184,9 +185,9 @@ func LocalSingleSyncSingleTime(isPolicy bool) {
 			return
 		}
 	}
-	sn, lock := preSyncSingleTime(common.TYPE_LOCAL_SING, common.LOCAL_SINGLE_RUNNING)
+	sn, lock, startTime := preSyncSingleTime(common.TYPE_LOCAL_SING, common.LOCAL_SINGLE_RUNNING)
 	defer afterSyncSingleTime(common.TYPE_LOCAL_SING, common.LOCAL_SINGLE_FORCE_DONE)
-	sf, _ := OpenFile(config.SystemConfigCache.Cache.LocalSingleSync.SourcePath, false)
+	sf, _ := common.OpenFile(config.SystemConfigCache.Cache.LocalSingleSync.SourcePath, false)
 	tf := getSingleTargetFile(sf, config.SystemConfigCache.Cache.LocalSingleSync.TargetPath)
 	sfInfo, err := sf.Stat()
 	if err == nil {
@@ -195,8 +196,14 @@ func LocalSingleSyncSingleTime(isPolicy bool) {
 		log.Printf("single sync get file stat err: %v", err)
 	}
 	lock.Done()
-	worker := NewLocalSingleWorker(sf, tf, sn)
+	worker := NewLocalSingleWorker(sf, tf, sn, false)
 	worker.Execute()
+	recordLog(
+		common.TYPE_LOCAL_SING,
+		startTime,
+		tf.Name(),
+		sf.Name(),
+	)
 }
 
 func periodicLocalBatchSync() {
@@ -311,7 +318,7 @@ func PartitionSyncSingleTime() {
 	if common.GetRunningFlag(common.TYPE_PARTITION) {
 		return
 	}
-	sn, lock := preSyncSingleTime(common.TYPE_PARTITION, common.PARTITION_RUNNING)
+	sn, lock, startTime := preSyncSingleTime(common.TYPE_PARTITION, common.PARTITION_RUNNING)
 	defer afterSyncSingleTime(common.TYPE_PARTITION, common.PARTITION_FORCE_DONE)
 	GetTotalSize(&sn, config.SystemConfigCache.Cache.PartitionSync.SourcePath, true, lock)
 	lock.Done()
@@ -319,19 +326,25 @@ func PartitionSyncSingleTime() {
 		config.SystemConfigCache.Cache.PartitionSync.SourcePath,
 		config.SystemConfigCache.Cache.PartitionSync.TargetPath,
 		&sn,
-		true,
+		common.TYPE_PARTITION,
+		false,
+	)
+	recordLog(common.TYPE_PARTITION,
+		startTime,
+		config.SystemConfigCache.Cache.PartitionSync.TargetPath,
+		config.SystemConfigCache.Cache.PartitionSync.SourcePath,
 	)
 }
 
 func getSingleTargetFile(sf *os.File, targetPath string) *os.File {
 	tempTarget := ""
-	tf, err := OpenFile(config.SystemConfigCache.Value().LocalSingleSync.TargetPath, true)
+	tf, err := common.OpenFile(config.SystemConfigCache.Value().LocalSingleSync.TargetPath, true)
 
 	if err != nil {
-		if IsOpenDirError(err, config.SystemConfigCache.Value().LocalSingleSync.TargetPath) {
+		if common.IsOpenDirError(err, config.SystemConfigCache.Value().LocalSingleSync.TargetPath) {
 			sfInfo, _ := sf.Stat()
 			tempTarget = config.SystemConfigCache.Value().LocalSingleSync.TargetPath + "/" + sfInfo.Name()
-			tf, err = OpenFile(tempTarget, true)
+			tf, err = common.OpenFile(tempTarget, true)
 			if err != nil {
 				return tf
 			}
@@ -374,14 +387,33 @@ func syncFilePerm(source *os.File, target *os.File) {
 }
 
 func closeAndCheckFile(w *common.QWorker) {
-	if !CompareMd5(w.PrivateFile, w.TargetFile) {
+	if w.TargetFile != nil {
+		tfName := w.TargetFile.Name()
+		common.CloseFile(w.TargetFile)
+		f, err := common.OpenFile(tfName, false)
+		if err != nil {
+
+		}
+		w.TargetFile = f
+	}
+	if w.PrivateFile != nil {
+		sfName := w.PrivateFile.Name()
+		common.CloseFile(w.PrivateFile)
+		f, err := common.OpenFile(sfName, false)
+		if err != nil {
+
+		}
+		w.PrivateFile = f
+	}
+	common.SetCurrentSyncFile(w.SN, VERIFY_MD5, w.TargetFile.Name())
+	if !CompareAndCacheMd5(w.PrivateFile, w.TargetFile, &w.SN, w.Md5CacheFlag) {
 		AddBatchSyncError(w.PrivateFile.Name(), md5CheckError, w.SN)
 	}
 	if w.TargetFile != nil {
-		CloseFile(w.TargetFile)
+		common.CloseFile(w.TargetFile)
 	}
 	if w.PrivateFile != nil {
-		CloseFile(w.PrivateFile)
+		common.CloseFile(w.PrivateFile)
 	}
 }
 

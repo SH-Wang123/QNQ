@@ -74,6 +74,11 @@ type Partition struct {
 	UsedPercent  float64 `json:"used_percent"`
 }
 
+type cdpInfo struct {
+	Name string `json:"name"`
+	Md5  string `json:"md5"`
+}
+
 func getFileSeparator() string {
 	//if strings.Contains(runtime.GOOS, "window") {
 	//	return "\\"

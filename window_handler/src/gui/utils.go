@@ -375,7 +375,10 @@ func startSyncGUI(progressBox *fyne.Container, currentFileLabel *widget.Label, c
 			currentTimeRemaining.SetText("Under calculation")
 			for {
 				remaining := worker.EstimatedTotalTime(currentSN, 10*time.Second)
-				if remaining <= 0 {
+				if remaining < 0 {
+					return
+				} else if remaining == 0 {
+					currentTimeRemaining.SetText("Verify MD5, Please wait...")
 					return
 				}
 				if !common.GetRunningFlag(businessType) {

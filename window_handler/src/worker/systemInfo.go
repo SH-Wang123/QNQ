@@ -54,10 +54,10 @@ func TestDiskSpeed(bufferSize CapacityUnit, totalSize CapacityUnit, drive string
 		common.GWChannel <- common.TEST_DISK_SPEED_OVER
 	}()
 	fileName := drive + "/test_speed"
-	DeleteFileOrDir(fileName)
+	common.DeleteFileOrDir(fileName)
 
 	_, wirteTime := CreateFile(bufferSize, fileName, totalSize, true)
-	defer DeleteFileOrDir(fileName)
+	defer common.DeleteFileOrDir(fileName)
 	DiskWriteSpeedCache[drive] = FloatRound(float64(getMb(totalSize))/wirteTime, 2)
 
 	_, readTime := ReadFile(fileName, bufferSize)

@@ -16,3 +16,4 @@ window_handler/src/ut_temp/
 .idea/modules.xml
 window_handler/src/go.sum
 window_handler/src/bin/*
+window_handler/src/test/system_config

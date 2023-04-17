@@ -127,12 +127,30 @@ var (
 			getTestDiskSpeedComponent,
 			true,
 		},
+		"systemSetting": {
+			"QNQ System Setting",
+			"",
+			getTestDiskSpeedComponent,
+			true,
+		},
+		"setting": {
+			"QNQ System Setting",
+			"",
+			getTestDiskSpeedComponent,
+			true,
+		}, "olog": {
+			"QNQ Log",
+			"",
+			getLogComponent,
+			true,
+		},
 	}
 	//设置菜单树
 	NavigationIndex = map[string][]string{
-		"":           {"localSync", "systemInfo", "remoteSync"},
-		"localSync":  {"localBatchSync", "localSingleSync", "partitionSync"},
-		"systemInfo": {"diskInfo", "testDiskSpeed"},
-		"remoteSync": {"remoteSingleSync"},
+		"":              {"localSync", "remoteSync", "systemInfo", "systemSetting"},
+		"localSync":     {"localBatchSync", "localSingleSync", "partitionSync"},
+		"remoteSync":    {"remoteSingleSync"},
+		"systemInfo":    {"diskInfo", "testDiskSpeed"},
+		"systemSetting": {"olog"},
 	}
 )

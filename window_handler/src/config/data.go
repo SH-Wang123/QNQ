@@ -20,7 +20,9 @@ type systemConfig struct {
 	LocalSingleSync  localSync        `json:"local_single_sync"`
 	LocalBatchSync   localSync        `json:"local_batch_sync"`
 	PartitionSync    localSync        `json:"local_partition_sync"`
+	CdpSnapshot      cdpSnapshot      `json:"cdp_snapshot"`
 	VarianceAnalysis varianceAnalysis `json:"variance_analysis"`
+	SystemSetting    systemSetting    `json:"system_setting"`
 }
 
 type localSync struct {
@@ -66,6 +68,16 @@ type systemInfo struct {
 	OS              string
 	SystemFramework string
 	MachineName     string
+}
+
+type cdpSnapshot struct {
+	SourcePath string     `json:"cdp_source"`
+	TargetPath string     `json:"cdp_target"`
+	Policy     syncPolicy `json:"cdp_policy"`
+}
+
+type systemSetting struct {
+	EnableOLog bool `json:"enable_o_log"`
 }
 
 // CacheConfig Subject Object

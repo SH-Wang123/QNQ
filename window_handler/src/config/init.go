@@ -30,6 +30,7 @@ func init() {
 		}()
 		return
 	}
+	initOLog()
 	addObserver()
 	loadConfig()
 }
@@ -74,6 +75,9 @@ func loadDefaultConfig() {
 		VarianceAnalysis: varianceAnalysis{
 			TimeStamp: true,
 			Md5:       true,
+		},
+		SystemSetting: systemSetting{
+			EnableOLog: true,
 		},
 	}
 	SystemConfigCache.Set(defaultConfig)

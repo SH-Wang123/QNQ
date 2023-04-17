@@ -29,6 +29,11 @@ var (
 )
 
 var (
+	currentCDPSnapshotSN string
+	cdpSnapshotStartLock = &sync.WaitGroup{}
+)
+
+var (
 	currentFileMap = make(map[string]string)
 	cfLock         = &sync.RWMutex{}
 )
@@ -37,10 +42,13 @@ var gwLock sync.RWMutex
 
 var GWChannel = make(chan int)
 
-var localBatchRunningFlag = false
-var localSingleRunningFlag = false
-var remoteSingleRunningFlag = false
-var partitionRunningFlag = false
+var (
+	localBatchRunningFlag   = false
+	localSingleRunningFlag  = false
+	remoteSingleRunningFlag = false
+	partitionRunningFlag    = false
+	cdpSnapshotRunningFlag  = false
+)
 
 func SendSignal2GWChannel(signal int) {
 	gwLock.Lock()
@@ -84,6 +92,8 @@ func GetCurrentSN(businessType int) string {
 		return currentLocalSingleSN
 	case TYPE_REMOTE_SINGLE:
 		return currentRemoteSingleSN
+	case TYPE_CDP_SNAPSHOT:
+		return currentCDPSnapshotSN
 	default:
 		return ""
 	}
@@ -99,6 +109,8 @@ func SetCurrentSN(businessType int, SN string) {
 		currentLocalSingleSN = SN
 	case TYPE_REMOTE_SINGLE:
 		currentRemoteSingleSN = SN
+	case TYPE_CDP_SNAPSHOT:
+		currentCDPSnapshotSN = SN
 	}
 }
 
@@ -112,6 +124,8 @@ func GetStartLock(businessType int) *sync.WaitGroup {
 		return localSingleStartLock
 	case TYPE_REMOTE_SINGLE:
 		return remoteSingleStartLock
+	case TYPE_CDP_SNAPSHOT:
+		return cdpSnapshotStartLock
 	default:
 		return &sync.WaitGroup{}
 	}
@@ -127,6 +141,8 @@ func SetRunningFlag(businessType int, runningFlag bool) {
 		partitionRunningFlag = runningFlag
 	case TYPE_REMOTE_SINGLE:
 		remoteSingleRunningFlag = runningFlag
+	case TYPE_CDP_SNAPSHOT:
+		cdpSnapshotRunningFlag = runningFlag
 	}
 }
 
@@ -140,6 +156,8 @@ func GetRunningFlag(businessType int) bool {
 		return partitionRunningFlag
 	case TYPE_REMOTE_SINGLE:
 		return remoteSingleRunningFlag
+	case TYPE_CDP_SNAPSHOT:
+		return cdpSnapshotRunningFlag
 	default:
 		return true
 	}

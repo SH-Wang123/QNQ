@@ -1,12 +1,14 @@
+/*
+Copyright © 2023 NAME HERE <EMAIL ADDRESS>
+*/
 package main
 
 import (
 	"net"
-	"window_handler/cli"
+	"window_handler/cmd"
 	"window_handler/common"
 	"window_handler/gui"
 	"window_handler/network"
-	_ "window_handler/rest"
 	"window_handler/worker"
 )
 
@@ -15,7 +17,7 @@ func main() {
 	//os.Setenv("FYNE_FONT", "msyh.ttc")
 	//config.GetTargetSystemInfo()
 	if common.CLI_FLAG {
-		cli.StartCli()
+		cmd.Execute()
 	} else {
 		gui.StartGUI()
 	}

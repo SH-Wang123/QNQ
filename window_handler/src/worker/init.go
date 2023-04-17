@@ -2,11 +2,15 @@ package worker
 
 import (
 	"log"
+	"runtime"
 	"window_handler/common"
 	"window_handler/config"
 )
 
 var CapacityStrMap = make(map[string]CapacityUnit)
+var osName string
+var linuxOSName = "linux"
+var windowsOSName = "windows"
 
 func init() {
 	CapacityStrMap["Byte"] = Byte
@@ -18,6 +22,7 @@ func init() {
 	gcFriend()
 	LoadWorkerFactory()
 	GetPartitionsInfo()
+	osName = runtime.GOOS
 }
 
 // Deprecated: 没有意义，太浪费内存，无需缓存整棵文件树
@@ -37,7 +42,7 @@ func gcFriend() {
 
 // Deprecated: 顽固的面向对象思想，占用内存过多
 func GetFileTree(fNode *FileNode, isRecurrence bool) {
-	f, _ := OpenFile(fNode.AbstractPath, false)
+	f, _ := common.OpenFile(fNode.AbstractPath, false)
 	allChild, err := f.Readdir(-1)
 	if err != nil {
 		fNode.IsDirectory = false
@@ -65,7 +70,7 @@ func GetFileTree(fNode *FileNode, isRecurrence bool) {
 	} else {
 		fNode.IsDirectory = false
 	}
-	defer CloseFile(f)
+	defer common.CloseFile(f)
 }
 
 func LoadWorkerFactory() {
