@@ -7,7 +7,7 @@ import (
 
 const GET_INFO_FAILURE = "Getting information failure"
 const NOT_SET_STR = "Not Set"
-const Version = "V0.0.4.3"
+const Version = "V0.0.4.5"
 const WindowHeight = 600
 const WindowWidth = 900
 

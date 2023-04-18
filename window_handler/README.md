@@ -13,3 +13,4 @@ go build -ldflags -H=windowsgui main.go
 $Env:GOOS = "linux"
 $Env:GOARCH = "arm64"
 go build
+go build -ldflags="-s -w " -a -v -o  qnq_v0.0.4.5_windows_amd64.exe main.go

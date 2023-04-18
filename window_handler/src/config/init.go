@@ -28,11 +28,11 @@ func init() {
 		defer func() {
 			filePtr.Close()
 		}()
-		return
+	} else {
+		loadConfig()
 	}
 	initOLog()
 	addObserver()
-	loadConfig()
 }
 
 // TODO 配置新增后的版本升级处理
