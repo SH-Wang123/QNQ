@@ -20,10 +20,10 @@ var TargetSystemInfo = systemInfo{
 
 func init() {
 	loadInitConfigCache()
+	addObserver()
 	_, err := os.Open(CONFOG_PATH)
 	if err != nil {
 		filePtr, _ := os.Create(CONFOG_PATH)
-		addObserver()
 		loadDefaultConfig()
 		defer func() {
 			filePtr.Close()
@@ -32,7 +32,6 @@ func init() {
 		loadConfig()
 	}
 	initOLog()
-	addObserver()
 }
 
 // TODO 配置新增后的版本升级处理
