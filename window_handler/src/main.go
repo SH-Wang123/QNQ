@@ -9,11 +9,9 @@ import (
 	"window_handler/common"
 	"window_handler/gui"
 	"window_handler/network"
-	"window_handler/worker"
 )
 
 func main() {
-	worker.GetPartitionsInfo()
 	//os.Setenv("FYNE_FONT", "msyh.ttc")
 	//config.GetTargetSystemInfo()
 	if common.CLI_FLAG {

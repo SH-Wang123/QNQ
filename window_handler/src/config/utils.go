@@ -22,3 +22,15 @@ func addObserver() {
 		name: "local_system_config_observer",
 	})
 }
+
+func GetCsvStr(str ...string) string {
+	ret := ""
+	for _, v := range str {
+		if ret == "" {
+			ret = v
+		} else {
+			ret += "," + v
+		}
+	}
+	return ret
+}

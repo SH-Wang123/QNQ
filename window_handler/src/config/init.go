@@ -32,6 +32,9 @@ func init() {
 		loadConfig()
 	}
 	initOLog()
+	initQTP()
+	addObserver()
+	loadConfig()
 }
 
 // TODO 配置新增后的版本升级处理

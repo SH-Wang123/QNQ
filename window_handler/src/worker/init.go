@@ -11,6 +11,7 @@ var CapacityStrMap = make(map[string]CapacityUnit)
 var osName string
 var linuxOSName = "linux"
 var windowsOSName = "windows"
+var macOSName = "mac"
 
 func init() {
 	CapacityStrMap["Byte"] = Byte

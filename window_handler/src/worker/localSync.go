@@ -73,14 +73,14 @@ func GetFileTreeMap(node *FileNode, data *map[string][]string) {
 }
 
 func batchSyncFile(startPath string, targetPath string, sn *string, busType int, loadMd5Cache bool) {
-	sf, err1 := OpenDir(startPath)
+	sf, err1 := common.OpenDir(startPath)
 	if err1 != nil {
 		return
 	}
 	sfInfo, _ := sf.Stat()
 	sfMode := sfInfo.Mode()
 	common.CreateDir(targetPath, &sfMode)
-	tf, err2 := OpenDir(targetPath)
+	tf, err2 := common.OpenDir(targetPath)
 	if err1 != nil || err2 != nil {
 		return
 	}
@@ -162,7 +162,7 @@ func LocalBatchSyncSingleTime(isPolicy bool) {
 		common.TYPE_LOCAL_BATCH,
 		false,
 	)
-	recordLog(
+	recordOLog(
 		common.TYPE_LOCAL_BATCH,
 		startTime,
 		config.SystemConfigCache.Cache.LocalBatchSync.TargetPath,
@@ -198,7 +198,7 @@ func LocalSingleSyncSingleTime(isPolicy bool) {
 	lock.Done()
 	worker := NewLocalSingleWorker(sf, tf, sn, false)
 	worker.Execute()
-	recordLog(
+	recordOLog(
 		common.TYPE_LOCAL_SING,
 		startTime,
 		tf.Name(),
@@ -329,7 +329,7 @@ func PartitionSyncSingleTime() {
 		common.TYPE_PARTITION,
 		false,
 	)
-	recordLog(common.TYPE_PARTITION,
+	recordOLog(common.TYPE_PARTITION,
 		startTime,
 		config.SystemConfigCache.Cache.PartitionSync.TargetPath,
 		config.SystemConfigCache.Cache.PartitionSync.SourcePath,
@@ -406,7 +406,7 @@ func closeAndCheckFile(w *common.QWorker) {
 		w.PrivateFile = f
 	}
 	common.SetCurrentSyncFile(w.SN, VERIFY_MD5, w.TargetFile.Name())
-	if !CompareAndCacheMd5(w.PrivateFile, w.TargetFile, &w.SN, w.Md5CacheFlag) {
+	if !CompareAndCacheMd5(w.PrivateFile, w.TargetFile) {
 		AddBatchSyncError(w.PrivateFile.Name(), md5CheckError, w.SN)
 	}
 	if w.TargetFile != nil {

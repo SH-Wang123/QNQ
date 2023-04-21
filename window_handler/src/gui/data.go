@@ -138,18 +138,32 @@ var (
 			"",
 			getTestDiskSpeedComponent,
 			true,
-		}, "olog": {
+		},
+		"olog": {
 			"QNQ Log",
 			"",
 			getLogComponent,
 			true,
 		},
+		"snapshot": {
+			"Snapshot",
+			"",
+			getLogComponent,
+			true,
+		},
+		"timePoint": {
+			"Time Point",
+			"Currently, only the same disk creation time point is supported.",
+			getTimePointComponent,
+			true,
+		},
 	}
 	//设置菜单树
 	NavigationIndex = map[string][]string{
-		"":              {"localSync", "remoteSync", "systemInfo", "systemSetting"},
+		"":              {"localSync", "remoteSync", "snapshot", "systemInfo", "systemSetting"},
 		"localSync":     {"localBatchSync", "localSingleSync", "partitionSync"},
 		"remoteSync":    {"remoteSingleSync"},
+		"snapshot":      {"timePoint"},
 		"systemInfo":    {"diskInfo", "testDiskSpeed"},
 		"systemSetting": {"olog"},
 	}

@@ -81,3 +81,8 @@ func CloseFile(fs ...*os.File) {
 		}
 	}
 }
+
+func OpenDir(filePath string) (*os.File, error) {
+	f, err := os.Open(filePath)
+	return f, err
+}

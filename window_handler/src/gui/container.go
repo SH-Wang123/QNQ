@@ -1,7 +1,6 @@
 package gui
 
 import (
-	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -14,9 +13,7 @@ func makeButtonList(count int) []fyne.CanvasObject {
 	var items []fyne.CanvasObject
 	for i := 1; i <= count; i++ {
 		index := i // capture
-		items = append(items, widget.NewButton("Button "+strconv.Itoa(index), func() {
-			fmt.Println("Tapped", index)
-		}))
+		items = append(items, widget.NewButton("Button "+strconv.Itoa(index), nil))
 	}
 
 	return items

@@ -16,13 +16,6 @@ import (
 	"window_handler/config"
 )
 
-var sfMd5Cache = make(map[string]map[string]*string)
-
-func OpenDir(filePath string) (*os.File, error) {
-	f, err := os.Open(filePath)
-	return f, err
-}
-
 func GetFileMd5(f *os.File) *string {
 	md5h := md5.New()
 	_, err := io.Copy(md5h, f)
@@ -40,14 +33,8 @@ func CompareMd5(sf *os.File, tf *os.File) bool {
 	return sfMd5Ptr == tfMd5Ptr
 }
 
-func CompareAndCacheMd5(sf *os.File, tf *os.File, sn *string, cacheFlag bool) bool {
+func CompareAndCacheMd5(sf *os.File, tf *os.File) bool {
 	sfMd5Ptr := GetFileMd5(sf)
-	if cacheFlag {
-		if sfMd5Cache[*sn] == nil {
-			sfMd5Cache[*sn] = make(map[string]*string)
-		}
-		sfMd5Cache[*sn][sf.Name()] = sfMd5Ptr
-	}
 	tfMd5Ptr := GetFileMd5(tf)
 	return sfMd5Ptr == tfMd5Ptr
 }
@@ -78,7 +65,7 @@ func stringToUint64(s string) (uint64, error) {
 	return uint64(intNum), nil
 }
 
-// fileSize : KB
+// CreateFile fileSize : KB
 func CreateFile(bufferSize CapacityUnit, filePath string, fileSize CapacityUnit, randomContent bool) (success bool, usedTime float64) {
 	exist, err := common.IsExist(filePath)
 	if exist {
@@ -106,7 +93,7 @@ func CreateFile(bufferSize CapacityUnit, filePath string, fileSize CapacityUnit,
 	return true, usedTime
 }
 
-func ReadFile(filePath string, bufferSize CapacityUnit) (success bool, usedTime float64) {
+func readFile(filePath string, bufferSize CapacityUnit) (success bool, usedTime float64) {
 	exist, _ := common.IsExist(filePath)
 	if !exist {
 		return false, 1
@@ -353,7 +340,7 @@ func GetTotalSize(sn *string, startPath string, isRoot bool, lock *sync.WaitGrou
 			return
 		}
 	}
-	f, err := OpenDir(startPath)
+	f, err := common.OpenDir(startPath)
 	if err != nil {
 		log.Printf("GetTotalSize err: %v", err)
 		return
@@ -399,21 +386,24 @@ func GetFileName(path string) string {
 	return ""
 }
 
-func clearSfMd5Cache(sn *string) {
-	sfMd5Cache[*sn] = make(map[string]*string)
-}
-
-func getSfMd5Cache(sn *string) map[string]*string {
-	return sfMd5Cache[*sn]
-}
-
-func recordLog(busType int, startTime string, target string, source string) {
+// recordOLog 记录操作日志
+func recordOLog(busType int, startTime string, target string, source string) {
 	if !config.SystemConfigCache.Value().SystemSetting.EnableOLog {
 		return
 	}
 	overTime := getNowTimeStr()
 	logStr := config.GetOLogType(busType) + "," + startTime + "," + overTime + ",success," + target + "," + source
-	config.AddOLog(logStr)
+	config.AddToCsv(logStr, false)
+}
+
+// recordTPLog 记录时间点日志
+func recordTPLog(busType int, startTime string, target string, source string) {
+	if !config.SystemConfigCache.Value().SystemSetting.EnableOLog {
+		return
+	}
+	overTime := getNowTimeStr()
+	logStr := config.GetOLogType(busType) + "," + startTime + "," + overTime + ",success," + target + "," + source
+	config.AddToCsv(logStr, false)
 }
 
 func getNowTimeStr() string {

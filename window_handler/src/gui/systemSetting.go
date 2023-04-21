@@ -9,7 +9,7 @@ import (
 )
 
 func getLogComponent(_ fyne.Window) fyne.CanvasObject {
-	log := config.LoadOLog()
+	log := config.LoadCSV(false)
 	rowNum := len(log)
 
 	t := widget.NewTable(

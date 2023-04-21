@@ -60,7 +60,7 @@ func TestDiskSpeed(bufferSize CapacityUnit, totalSize CapacityUnit, drive string
 	defer common.DeleteFileOrDir(fileName)
 	DiskWriteSpeedCache[drive] = FloatRound(float64(getMb(totalSize))/wirteTime, 2)
 
-	_, readTime := ReadFile(fileName, bufferSize)
+	_, readTime := readFile(fileName, bufferSize)
 	DiskReadSpeedCache[drive] = FloatRound(float64(getMb(totalSize))/readTime, 2)
 	return writeSpeed, 0
 }
