@@ -412,7 +412,7 @@ func startSyncGUI(progressBox *fyne.Container, currentFileLabel *widget.Label, c
 
 // overSyncGUI 同步进度条、当前文件、剩余时间隐藏
 func overSyncGUI(progressBox *fyne.Container, currentFileLabel *widget.Label, currentTimeRemaining *widget.Label) {
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 1)
 	progressBox.RemoveAll()
 	currentFileLabel.SetText(NOT_RUNNING_STR)
 	currentFileLabel.Refresh()

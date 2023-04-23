@@ -12,11 +12,11 @@ var currentSNMap = make(map[int]string)
 var runningFlagMap = make(map[int]bool)
 
 var (
-	localPartStartLock    = &sync.WaitGroup{}
-	localBatchStartLock   = &sync.WaitGroup{}
-	localSingleStartLock  = &sync.WaitGroup{}
-	remoteSingleStartLock = &sync.WaitGroup{}
-	cdpSnapshotStartLock  = &sync.WaitGroup{}
+	localPartStartLock       = &sync.WaitGroup{}
+	localBatchStartLock      = &sync.WaitGroup{}
+	localSingleStartLock     = &sync.WaitGroup{}
+	remoteSingleStartLock    = &sync.WaitGroup{}
+	createTimePointStartLock = &sync.WaitGroup{}
 )
 
 var (
@@ -85,5 +85,5 @@ func initLockMap() {
 	currentLockMap[TYPE_PARTITION] = localPartStartLock
 	currentLockMap[TYPE_LOCAL_SING] = localSingleStartLock
 	currentLockMap[TYPE_REMOTE_SINGLE] = remoteSingleStartLock
-	currentLockMap[TYPE_CDP_SNAPSHOT] = cdpSnapshotStartLock
+	currentLockMap[TYPE_CREATE_TIMEPOINT] = createTimePointStartLock
 }

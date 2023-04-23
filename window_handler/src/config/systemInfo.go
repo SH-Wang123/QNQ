@@ -86,7 +86,7 @@ func initLogTypeMap() {
 	logTypeMap[common.TYPE_PARTITION] = "Partition Sync"
 	logTypeMap[common.TYPE_LOCAL_SING] = "Local Single Sync"
 	logTypeMap[common.TYPE_LOCAL_BATCH] = "Local Batch Sync"
-	logTypeMap[common.TYPE_CDP_SNAPSHOT] = "Create CDP Snapshot"
+	logTypeMap[common.TYPE_CREATE_TIMEPOINT] = "Create Time Point"
 	logTypeMap[common.TYPE_REMOTE_BATCH] = "Remote Batch Sync"
 	logTypeMap[common.TYPE_REMOTE_SINGLE] = "Remote Single Sync"
 }

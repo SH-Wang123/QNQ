@@ -88,7 +88,7 @@ func batchSyncFile(startPath string, targetPath string, sn *string, busType int,
 	common.CloseFile(sf, tf)
 	ReverseCompareAndDelete(startPath, targetPath)
 	if !common.GetRunningFlag(busType) {
-		cancelTask(busType, common.GetForceDoneSignal(busType))
+		cancelTask(busType)
 		return
 	}
 	for _, child := range children {
@@ -128,20 +128,20 @@ func batchSyncFile(startPath string, targetPath string, sn *string, busType int,
 	}
 }
 
-func preSyncSingleTime(busType int, runningTag int) (sn string, lock *sync.WaitGroup, startTime string) {
+func preSyncSingleTime(busType int) (sn string, lock *sync.WaitGroup, startTime string) {
 	sn = common.GetSNCount()
 	lock = common.GetStartLock(busType)
 	lock.Add(1)
 	common.SetCurrentSN(busType, sn)
 	common.SetRunningFlag(busType, true)
-	common.SendSignal2GWChannel(runningTag)
+	common.SendSignal2GWChannel(common.GetRunningSignal(busType))
 	initSizeMap(sn)
 	return sn, lock, getNowTimeStr()
 }
 
-func afterSyncSingleTime(busType int, doneTag int) {
+func afterSyncSingleTime(busType int) {
 	common.SetRunningFlag(busType, false)
-	common.SendSignal2GWChannel(doneTag)
+	common.SendSignal2GWChannel(common.GetForceDoneSignal(busType))
 }
 
 // LocalBatchSyncSingleTime 直接读取配置文件，无需参数
@@ -151,8 +151,8 @@ func LocalBatchSyncSingleTime(isPolicy bool) {
 			return
 		}
 	}
-	sn, lock, startTime := preSyncSingleTime(common.TYPE_LOCAL_BATCH, common.LOCAL_BATCH_RUNNING)
-	defer afterSyncSingleTime(common.TYPE_LOCAL_BATCH, common.LOCAL_BATCH_FORCE_DONE)
+	sn, lock, startTime := preSyncSingleTime(common.TYPE_LOCAL_BATCH)
+	defer afterSyncSingleTime(common.TYPE_LOCAL_BATCH)
 	GetTotalSize(&sn, config.SystemConfigCache.Cache.LocalBatchSync.SourcePath, true, lock)
 	lock.Done()
 	batchSyncFile(
@@ -169,8 +169,8 @@ func LocalBatchSyncSingleTime(isPolicy bool) {
 		config.SystemConfigCache.Cache.LocalBatchSync.SourcePath)
 }
 
-func cancelTask(busType int, doneTag int) {
-	afterSyncSingleTime(busType, doneTag)
+func cancelTask(busType int) {
+	afterSyncSingleTime(busType)
 }
 
 // CancelTask 由外界强制设置任务终止标志
@@ -185,8 +185,8 @@ func LocalSingleSyncSingleTime(isPolicy bool) {
 			return
 		}
 	}
-	sn, lock, startTime := preSyncSingleTime(common.TYPE_LOCAL_SING, common.LOCAL_SINGLE_RUNNING)
-	defer afterSyncSingleTime(common.TYPE_LOCAL_SING, common.LOCAL_SINGLE_FORCE_DONE)
+	sn, lock, startTime := preSyncSingleTime(common.TYPE_LOCAL_SING)
+	defer afterSyncSingleTime(common.TYPE_LOCAL_SING)
 	sf, _ := common.OpenFile(config.SystemConfigCache.Cache.LocalSingleSync.SourcePath, false)
 	tf := getSingleTargetFile(sf, config.SystemConfigCache.Cache.LocalSingleSync.TargetPath)
 	sfInfo, err := sf.Stat()
@@ -318,8 +318,8 @@ func PartitionSyncSingleTime() {
 	if common.GetRunningFlag(common.TYPE_PARTITION) {
 		return
 	}
-	sn, lock, startTime := preSyncSingleTime(common.TYPE_PARTITION, common.PARTITION_RUNNING)
-	defer afterSyncSingleTime(common.TYPE_PARTITION, common.PARTITION_FORCE_DONE)
+	sn, lock, startTime := preSyncSingleTime(common.TYPE_PARTITION)
+	defer afterSyncSingleTime(common.TYPE_PARTITION)
 	GetTotalSize(&sn, config.SystemConfigCache.Cache.PartitionSync.SourcePath, true, lock)
 	lock.Done()
 	batchSyncFile(

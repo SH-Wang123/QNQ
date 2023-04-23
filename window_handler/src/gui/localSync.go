@@ -227,6 +227,7 @@ func initPartitionSyncStartBtn(win fyne.Window) {
 		}()
 		common.GetStartLock(common.TYPE_PARTITION).Done()
 	})
+	partitionStartButton.Importance = widget.HighImportance
 }
 
 func initStartLocalBatchButton(win fyne.Window) {
@@ -241,6 +242,7 @@ func initStartLocalBatchButton(win fyne.Window) {
 		go worker.LocalBatchSyncSingleTime(false)
 		common.GetStartLock(common.TYPE_LOCAL_BATCH).Done()
 	})
+	localBatchStartButton.Importance = widget.HighImportance
 }
 
 func getStartLocalSingleButton(win fyne.Window) *widget.Button {
@@ -259,6 +261,7 @@ func getStartLocalSingleButton(win fyne.Window) *widget.Button {
 		}
 		go worker.LocalSingleSyncSingleTime(false)
 	})
+	button.Importance = widget.HighImportance
 	return button
 }
 

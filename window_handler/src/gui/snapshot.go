@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"window_handler/config"
+	"window_handler/worker"
 )
 
 var (
@@ -27,19 +28,50 @@ func getTimePointComponent(win fyne.Window) fyne.CanvasObject {
 
 func getCreateTimePoint(win fyne.Window) fyne.CanvasObject {
 	ctpOnce.Do(func() {
-		sourcePathBind := getBindString(config.SystemConfigCache.Value().LocalBatchSync.SourcePath)
+		sourcePathBind := getBindString(config.NOT_SET_STR)
 		sourceContainer := loadValue2Label("Source Path: ", sourcePathBind)
 		sourceComponent := container.New(layout.NewHBoxLayout(), sourceContainer, makeOpenFolderBtn("Open",
 			win,
 			sourcePathBind,
 			&config.SystemConfigCache.Cache.LocalBatchSync.SourcePath))
 
-		targetPathBind := getBindString(config.SystemConfigCache.Value().LocalBatchSync.TargetPath)
+		targetPathBind := getBindString(config.NOT_SET_STR)
 		targetContainer := loadValue2Label("Time Point Path: ", targetPathBind)
 		targetComponent := container.New(layout.NewHBoxLayout(), targetContainer, makeOpenFolderBtn("Open",
 			win,
 			targetPathBind,
 			&config.SystemConfigCache.Cache.LocalBatchSync.TargetPath))
+		nameInput := widget.NewEntry()
+		nameInput.SetPlaceHolder("Input time point name.If not inputted, it will be automatically generated.")
+		nameComponent := container.New(
+			layout.NewFormLayout(),
+			widget.NewLabel("Time Point Name: "),
+			nameInput,
+		)
+		marks := widget.NewMultiLineEntry()
+		marks.SetPlaceHolder("Input marks.")
+		marks.SetMinRowsVisible(2)
+		marksComponent := container.New(
+			layout.NewFormLayout(),
+			widget.NewLabel("Marks: "),
+			marks,
+		)
+		createBtn := widget.NewButton("Create Time Point", func() {
+			sourcePath, _ := sourcePathBind.Get()
+			targetPath, _ := targetPathBind.Get()
+			name := nameInput.Text
+			marksStr := marks.Text
+			worker.CreateTimePoint(name, sourcePath, targetPath, marksStr, true)
+		})
+		createBtn.Importance = widget.HighImportance
+		createTimePoint = container.NewVBox(
+			widget.NewLabel(""),
+			sourceComponent,
+			targetComponent,
+			nameComponent,
+			marksComponent,
+			createBtn,
+		)
 
 	})
 	return createTimePoint

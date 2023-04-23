@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"log"
 	"net/url"
 	"time"
 	"window_handler/common"
@@ -22,6 +23,7 @@ const preferenceCurrentNavigation = "currentNavigation"
 
 func init() {
 	I18n()
+	initRegisterGWFunc()
 	go watchGWChannel()
 }
 
@@ -166,32 +168,50 @@ func initTimeCycle() {
 	dayCycleMap[dayArrayList[6]] = time.Saturday
 }
 
+var gwChannelRegisterF = make(map[int]func(), 16)
+
+// registerGWFunc GW管道的响应函数均在此注册
+func registerGWFunc(signal int, f func()) {
+	gwChannelRegisterF[signal] = f
+}
+
+// initRegisterGWFunc 初始化注册GW响应函数
+func initRegisterGWFunc() {
+	//local batch sync
+	registerGWFunc(common.GetRunningSignal(common.TYPE_LOCAL_BATCH), localBatchRunningHandle)
+	registerGWFunc(common.GetForceDoneSignal(common.TYPE_LOCAL_BATCH), localBatchDoneHandle)
+	//local single sync
+	registerGWFunc(common.GetRunningSignal(common.TYPE_LOCAL_SING), localSingleRunningHandle)
+	registerGWFunc(common.GetForceDoneSignal(common.TYPE_LOCAL_SING), localSingleDoneHandle)
+	//test disk speed
+	registerGWFunc(common.GetRunningSignal(common.TYPE_TEST_SPEED), testSpeedRunningHandle)
+	registerGWFunc(common.GetForceDoneSignal(common.TYPE_TEST_SPEED), testSpeedDoneHandle)
+	//partition sync
+	registerGWFunc(common.GetRunningSignal(common.TYPE_PARTITION), partitionRunningHandle)
+	registerGWFunc(common.GetForceDoneSignal(common.TYPE_PARTITION), partitionDoneHandle)
+	//partition sync
+	registerGWFunc(common.GetRunningSignal(common.TYPE_CREATE_TIMEPOINT), createTPRunningHandle)
+	registerGWFunc(common.GetForceDoneSignal(common.TYPE_CREATE_TIMEPOINT), createTPDoneHandle)
+}
+
 func watchGWChannel() {
 	for {
 		select {
 		case c := <-common.GWChannel:
-			if c == common.LOCAL_BATCH_RUNNING {
-				localBatchRunningHandle()
-			} else if c == common.LOCAL_BATCH_FORCE_DONE {
-				localBatchDoneHandle()
-			} else if c == common.LOCAL_SINGLE_RUNNING {
-				localSingleRunningHandle()
-			} else if c == common.LOCAL_SINGLE_FORCE_DONE {
-				localSingleDoneHandle()
-			} else if c == common.TEST_DISK_SPEED_START {
-				testSpeedRetLab.SetText("Testing...")
-			} else if c == common.TEST_DISK_SPEED_OVER {
-				setDiskSpeedRet()
-			} else if c == common.PARTITION_RUNNING {
-				partitionRunningHandle()
-			} else if c == common.PARTITION_FORCE_DONE {
-				partitionDoneHandle()
+			f := gwChannelRegisterF[c]
+			if f == nil {
+				log.Printf("!!!!!!!!!!!!!!!!!!has a signal doesn't register, num : %v", c)
 			}
+			f()
 		}
 	}
 }
 
-func setDiskSpeedRet() {
+func testSpeedRunningHandle() {
+	testSpeedRetLab.SetText("Testing...")
+}
+
+func testSpeedDoneHandle() {
 	partition := speedPartitionSelect.Selected
 	rSpeed := fmt.Sprint(worker.DiskReadSpeedCache[partition])
 	wSpeed := fmt.Sprint(worker.DiskWriteSpeedCache[partition])
@@ -206,9 +226,9 @@ func localBatchRunningHandle() {
 }
 
 func localBatchDoneHandle() {
+	overSyncGUI(localBatchProgressBox, localBatchCurrentFile, localBatchTimeRemaining)
 	batchEnable(localBatchSyncPolicyComponent, localBatchStartButton)
 	batchDisable(localBatchCancelButton)
-	overSyncGUI(localBatchProgressBox, localBatchCurrentFile, localBatchTimeRemaining)
 }
 
 func localSingleRunningHandle() {
@@ -232,6 +252,14 @@ func partitionDoneHandle() {
 	batchEnable(partitionSyncPolicyComponent, partitionStartButton)
 	batchDisable(partitionCancelButton)
 	overSyncGUI(partitionProgressBox, partitionCurrentFile, partitionTimeRemaining)
+}
+
+func createTPRunningHandle() {
+
+}
+
+func createTPDoneHandle() {
+
 }
 
 func showSyncError(busType int) {

@@ -3,7 +3,7 @@ module window_handler
 go 1.19
 
 require (
-	fyne.io/fyne/v2 v2.3.2
+	fyne.io/fyne/v2 v2.3.3
 	github.com/gin-gonic/gin v1.9.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/cobra v1.7.0

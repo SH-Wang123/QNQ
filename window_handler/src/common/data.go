@@ -39,32 +39,52 @@ const (
 	TYPE_PARTITION
 	TYPE_REMOTE_SINGLE
 	TYPE_REMOTE_BATCH
-	TYPE_CDP_SNAPSHOT
+	TYPE_CREATE_TIMEPOINT
+	TYPE_TEST_SPEED
 )
 
 // channel signal
 const (
-	LOCAL_BATCH_RUNNING = iota
-	LOCAL_BATCH_FORCE_DONE
-	LOCAL_SINGLE_RUNNING
-	LOCAL_SINGLE_FORCE_DONE
-	PARTITION_RUNNING
-	PARTITION_FORCE_DONE
-	CDP_SNAPSHOT_FORCE_DONE
-	TEST_DISK_SPEED_START
-	TEST_DISK_SPEED_OVER
+	localBatchRunning = iota
+	localBatchForceDone
+	localSingleRunning
+	localSingleForceDone
+	partitionRunning
+	partitionForceDone
+	createTimePointRunning
+	createTimePointForceDone
+	testDiskSpeedRunning
+	testDiskSpeedForceDone
 )
 
 func GetForceDoneSignal(busType int) int {
 	switch busType {
 	case TYPE_LOCAL_BATCH:
-		return LOCAL_BATCH_FORCE_DONE
+		return localBatchForceDone
 	case TYPE_LOCAL_SING:
-		return LOCAL_SINGLE_FORCE_DONE
+		return localSingleForceDone
 	case TYPE_PARTITION:
-		return PARTITION_FORCE_DONE
-	case TYPE_CDP_SNAPSHOT:
-		return CDP_SNAPSHOT_FORCE_DONE
+		return partitionForceDone
+	case TYPE_CREATE_TIMEPOINT:
+		return createTimePointForceDone
+	case TYPE_TEST_SPEED:
+		return testDiskSpeedForceDone
+	}
+	return -1
+}
+
+func GetRunningSignal(busType int) int {
+	switch busType {
+	case TYPE_LOCAL_BATCH:
+		return localBatchRunning
+	case TYPE_LOCAL_SING:
+		return localSingleRunning
+	case TYPE_PARTITION:
+		return partitionRunning
+	case TYPE_CREATE_TIMEPOINT:
+		return createTimePointRunning
+	case TYPE_TEST_SPEED:
+		return testDiskSpeedRunning
 	}
 	return -1
 }

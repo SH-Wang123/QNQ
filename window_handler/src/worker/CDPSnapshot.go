@@ -3,21 +3,27 @@ package worker
 import (
 	"log"
 	"os/exec"
+	"reflect"
 	"strings"
 	"window_handler/common"
 	"window_handler/config"
 )
 
 // CreateTimePoint worker对外暴露的创建时间点方法
-func CreateTimePoint(name string, sourcePath string, targetPath string, marks string, needLog bool, sn *string) {
-	timePointPath := targetPath + "/" + *sn
+func CreateTimePoint(name string, sourcePath string, targetPath string, marks string, needLog bool) {
+	sn := common.GetTaskCount()
+	timePointPath := targetPath + "/" + name + sn
+	common.SendSignal2GWChannel(common.GetRunningSignal(common.TYPE_CREATE_TIMEPOINT))
+	defer common.SendSignal2GWChannel(common.GetForceDoneSignal(common.TYPE_CREATE_TIMEPOINT))
+	startTime := getNowTimeStr()
+	createTimePoint(sourcePath, timePointPath, &sn)
 	if needLog {
-		config.AddToCsv(
-			config.GetCsvStr(name, getNowTimeStr(), sourcePath, timePointPath, marks),
+		go config.AddToCsv(
+			config.GetCsvStr(name, startTime, sourcePath, timePointPath, marks),
 			true,
 		)
 	}
-	createTimePoint(sourcePath, timePointPath, sn)
+	go recordOLog(common.TYPE_CREATE_TIMEPOINT, startTime, timePointPath, sourcePath)
 }
 
 // createTimePoint 创建简单时间点
@@ -41,14 +47,19 @@ func createTimePoint(sourcePath string, timePointPath string, sn *string) {
 		targetAbsPath := timePointPath + fileSeparator + child.Name()
 		sourceAbsPath := sourcePath + fileSeparator + child.Name()
 		if !child.IsDir() {
-			createWindowsLink(sourceAbsPath, targetAbsPath)
+			//createWindowsLink(sourceAbsPath, targetAbsPath, sn)
+			common.SubmitGoPool(reflect.ValueOf(createWindowsLink), sourceAbsPath, targetAbsPath, sn)
 		} else {
 			createTimePoint(sourceAbsPath, targetAbsPath, sn)
 		}
 	}
 }
 
-func createWindowsLink(sourcePath string, targetPath string) {
+// createWindowsLink SN不为空字符串时，设置当前文件
+func createWindowsLink(sourcePath string, targetPath string, sn *string) {
+	if *sn != "" {
+
+	}
 	source := strings.ReplaceAll(sourcePath, "/", "\\")
 	target := strings.ReplaceAll(targetPath, "/", "\\")
 	cmd := exec.Command("cmd", "/C", "mklink", "/H", target, source)
