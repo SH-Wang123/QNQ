@@ -29,13 +29,17 @@ func newFixedGoPool(cap int) *goPool {
 	return newGoPool
 }
 
-func SubmitGoPool(f reflect.Value, params ...any) {
+func SubmitFunc2Pool(f reflect.Value, params ...any) {
 	var refParams []*reflect.Value
 	for _, v := range params {
 		refP := reflect.ValueOf(v)
 		refParams = append(refParams, &refP)
 	}
 	newGoPool.submit(f, refParams)
+}
+
+func SubmitTask2Pool() {
+
 }
 
 func (w *Task) execute() {

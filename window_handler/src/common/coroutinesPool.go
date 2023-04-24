@@ -1,7 +1,6 @@
 package common
 
 import (
-	"log"
 	"sync"
 )
 
@@ -53,12 +52,4 @@ func (p *CoroutinesPool) Submit(executeFunc func(v ...interface{})) {
 // TODO 并发问题
 func GetCoroutinesPool() *CoroutinesPool {
 	return globalCoroPool
-}
-
-func init() {
-	if globalCoroPool == nil {
-		globalCoroPool = NewFixedPool(0)
-		log.Printf("Create a new coroutines pool, size : %v", globalCoroPool.GoNum)
-	}
-	GetCoroutinesPool().StartPool()
 }

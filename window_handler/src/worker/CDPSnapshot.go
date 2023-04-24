@@ -48,7 +48,7 @@ func createTimePoint(sourcePath string, timePointPath string, sn *string) {
 		sourceAbsPath := sourcePath + fileSeparator + child.Name()
 		if !child.IsDir() {
 			//createWindowsLink(sourceAbsPath, targetAbsPath, sn)
-			common.SubmitGoPool(reflect.ValueOf(createWindowsLink), sourceAbsPath, targetAbsPath, sn)
+			common.SubmitFunc2Pool(reflect.ValueOf(createWindowsLink), sourceAbsPath, targetAbsPath, sn)
 		} else {
 			createTimePoint(sourceAbsPath, targetAbsPath, sn)
 		}

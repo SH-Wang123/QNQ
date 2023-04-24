@@ -36,7 +36,7 @@ func CompareMd5(sf *os.File, tf *os.File) bool {
 func CompareAndCacheMd5(sf *os.File, tf *os.File) bool {
 	sfMd5Ptr := GetFileMd5(sf)
 	tfMd5Ptr := GetFileMd5(tf)
-	return sfMd5Ptr == tfMd5Ptr
+	return *sfMd5Ptr == *tfMd5Ptr
 }
 
 func CompareModifyTime(sf *os.File, tf *os.File) bool {
