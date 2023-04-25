@@ -19,10 +19,15 @@ var (
 
 func getTimePointComponent(win fyne.Window) fyne.CanvasObject {
 	component := container.NewAppTabs(
-		container.NewTabItem("Create Time Point", getCreateTimePoint(win)),
+		container.NewTabItem("Create Time Point", widget.NewLabel("Developing")),
 		container.NewTabItem("Restore", widget.NewLabel("Developing")),
-		container.NewTabItem("Time Point Table", getTimePointTable()),
+		container.NewTabItem("Time Point Table", widget.NewLabel("Developing")),
 	)
+	//component := container.NewAppTabs(
+	//	container.NewTabItem("Create Time Point", getCreateTimePoint(win)),
+	//	container.NewTabItem("Restore", widget.NewLabel("Developing")),
+	//	container.NewTabItem("Time Point Table", getTimePointTable()),
+	//)
 	return component
 }
 

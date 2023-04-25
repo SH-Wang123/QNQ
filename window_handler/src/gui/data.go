@@ -148,7 +148,7 @@ var (
 		"snapshot": {
 			"Snapshot",
 			"",
-			getLogComponent,
+			getTimePointComponent,
 			true,
 		},
 		"timePoint": {

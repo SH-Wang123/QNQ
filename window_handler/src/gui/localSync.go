@@ -163,7 +163,12 @@ func getBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 		)
 		localBatchSyncComponent = container.NewBorder(FileSyncComponent, nil, nil, nil)
 	})
-	return localBatchSyncComponent
+
+	component := container.NewAppTabs(
+		container.NewTabItem("Option", localBatchSyncComponent),
+		container.NewTabItem("Result", widget.NewLabel("Developing")),
+	)
+	return component
 }
 
 func getPartitionSyncComponent(win fyne.Window) fyne.CanvasObject {
