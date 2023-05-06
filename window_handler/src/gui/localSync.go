@@ -269,14 +269,3 @@ func getStartLocalSingleButton(win fyne.Window) *widget.Button {
 	button.Importance = widget.HighImportance
 	return button
 }
-
-func getFileTree() fyne.CanvasObject {
-	dataM := make(map[string][]string)
-	worker.FileNode2TreeMap(&dataM)
-	tree := widget.NewTreeWithStrings(dataM)
-	size := fyne.Size{
-		Height: 600,
-	}
-	tree.Resize(size)
-	return tree
-}

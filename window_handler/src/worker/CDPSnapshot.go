@@ -13,8 +13,8 @@ import (
 func CreateTimePoint(name string, sourcePath string, targetPath string, marks string, needLog bool) {
 	sn := common.GetTaskCount()
 	timePointPath := targetPath + "/" + name + sn
-	common.SendSignal2GWChannel(common.GetRunningSignal(common.TYPE_CREATE_TIMEPOINT))
-	defer common.SendSignal2GWChannel(common.GetForceDoneSignal(common.TYPE_CREATE_TIMEPOINT))
+	common.SendSignal2WGChannel(common.GetRunningSignal(common.TYPE_CREATE_TIMEPOINT))
+	defer common.SendSignal2WGChannel(common.GetForceDoneSignal(common.TYPE_CREATE_TIMEPOINT))
 	startTime := getNowTimeStr()
 	createTimePoint(sourcePath, timePointPath, &sn)
 	if needLog {

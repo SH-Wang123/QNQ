@@ -19,7 +19,7 @@ func NewRemoteSyncReceiver(SN string) *common.QWorker {
 		SN:              SN,
 		Active:          true,
 		Status:          common.TASK_FREE,
-		ExecuteFunc:     RemoteSingleFileSyncReceiver,
+		ExecuteFunc:     remoteSingleFileSyncReceiver,
 		DeconstructFunc: receiverDeconstruct,
 	}
 }
@@ -34,7 +34,28 @@ func NewRemoteSyncSender() *common.QSender {
 	}
 }
 
-func RemoteSingleFileSyncReceiver(msg interface{}, w *common.QWorker) {
+func NewQNQAuthSender() *common.QSender {
+	return &common.QSender{
+		SN:                 common.GetSNCount(),
+		Active:             false,
+		Status:             common.TASK_FREE,
+		ExecuteFunc:        requestQNQAuth,
+		PrivateVariableMap: make(map[string]interface{}),
+	}
+}
+
+func requestQNQAuth(s *common.QSender) {
+	//激活认证接收者
+	workerSignal := common.GetQMQTaskPre(common.TYPE_REMOTE_QNQ_AUTH) + s.SN + "0"
+	_, _ = network.WriteStrToQTarget(workerSignal)
+	//发送认证信息，携带IP和MAC
+	var msgPrefix = dataMsgPreFix + s.SN
+
+	network.WriteStrToQTarget(network.LoadContent(msgPrefix, config.SystemConfigCache.Value().QnqSTarget.RemotePath))
+	//发送结束标志
+}
+
+func remoteSingleFileSyncReceiver(msg interface{}, w *common.QWorker) {
 	outputFileLock.Lock()
 	defer outputFileLock.Unlock()
 	msgStr := fmt.Sprintf("%v", msg)
@@ -85,7 +106,7 @@ func sendSingleFile(s *common.QSender) {
 			log.Printf("close file err : %v", err.Error())
 		}
 	}(f)
-	workerSignal := common.RemoteSingleSyncType + s.SN + "0"
+	workerSignal := common.GetQMQTaskPre(common.TYPE_REMOTE_SINGLE) + s.SN + "0"
 	_, _ = network.WriteStrToQTarget(workerSignal)
 	network.WriteStrToQTarget(network.LoadContent(msgPrefix, config.SystemConfigCache.Value().QnqSTarget.RemotePath))
 	buf := make([]byte, 4094)
@@ -107,7 +128,7 @@ func sendSingleFile(s *common.QSender) {
 			break
 		}
 	}
-	workerSignal = common.RemoteSingleSyncType + s.SN + "1"
+	workerSignal = common.GetQMQTaskPre(common.TYPE_REMOTE_SINGLE) + s.SN + "1"
 	_, _ = network.WriteStrToQTarget(workerSignal)
 }
 

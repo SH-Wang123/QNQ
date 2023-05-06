@@ -49,29 +49,6 @@ func NewLocalSingleWorker(sourceFile *os.File, targetFile *os.File, sn string, m
 	}
 }
 
-func FileNode2TreeMap(data *map[string][]string) {
-	datat := *data
-	datat[""] = append(datat[""], LocalBSFileNode.AbstractPath)
-	GetFileTreeMap(LocalBSFileNode, data)
-}
-
-func GetFileTreeMap(node *FileNode, data *map[string][]string) {
-	datat := *data
-	if !node.IsDirectory {
-		return
-	}
-	for _, child := range node.ChildrenNodeList {
-		var key string
-		if node.VarianceType == VARIANCE_ROOT {
-			key = node.AbstractPath
-		} else {
-			key = node.AnchorPointPath
-		}
-		datat[key] = append(datat[key], child.AnchorPointPath)
-		GetFileTreeMap(child, data)
-	}
-}
-
 func batchSyncFile(startPath string, targetPath string, sn *string, busType int, loadMd5Cache bool) {
 	sf, err1 := common.OpenDir(startPath)
 	if err1 != nil {
@@ -134,14 +111,14 @@ func preSyncSingleTime(busType int) (sn string, lock *sync.WaitGroup, startTime 
 	lock.Add(1)
 	common.SetCurrentSN(busType, sn)
 	common.SetRunningFlag(busType, true)
-	common.SendSignal2GWChannel(common.GetRunningSignal(busType))
+	common.SendSignal2WGChannel(common.GetRunningSignal(busType))
 	initSizeMap(sn)
 	return sn, lock, getNowTimeStr()
 }
 
 func afterSyncSingleTime(busType int) {
 	common.SetRunningFlag(busType, false)
-	common.SendSignal2GWChannel(common.GetForceDoneSignal(busType))
+	common.SendSignal2WGChannel(common.GetForceDoneSignal(busType))
 }
 
 // LocalBatchSyncSingleTime 直接读取配置文件，无需参数

@@ -25,6 +25,26 @@ import (
 
 */
 
+const TaskOverFlag = "1"
+const (
+	//远程业务，0x011 ~ 0x100
+	remoteSingleSyncPre = "0x011"
+	//非业务，0x101 ~ 0x200
+	qnqAuthPre = "0x101"
+)
+
+func GetQMQTaskPre(busType int) string {
+	switch busType {
+	case TYPE_REMOTE_SINGLE:
+		return remoteSingleSyncPre
+	case TYPE_REMOTE_QNQ_AUTH:
+		return qnqAuthPre
+	}
+	return "0x000"
+}
+
+const ()
+
 const (
 	TASK_FREE = iota
 	TASK_READY
@@ -34,63 +54,24 @@ const (
 
 // business type
 const (
-	TYPE_LOCAL_BATCH = iota
+	placeholder = iota
+	TYPE_LOCAL_BATCH
 	TYPE_LOCAL_SING
 	TYPE_PARTITION
 	TYPE_REMOTE_SINGLE
 	TYPE_REMOTE_BATCH
 	TYPE_CREATE_TIMEPOINT
 	TYPE_TEST_SPEED
-)
-
-// channel signal
-const (
-	localBatchRunning = iota
-	localBatchForceDone
-	localSingleRunning
-	localSingleForceDone
-	partitionRunning
-	partitionForceDone
-	createTimePointRunning
-	createTimePointForceDone
-	testDiskSpeedRunning
-	testDiskSpeedForceDone
+	TYPE_REMOTE_QNQ_AUTH
 )
 
 func GetForceDoneSignal(busType int) int {
-	switch busType {
-	case TYPE_LOCAL_BATCH:
-		return localBatchForceDone
-	case TYPE_LOCAL_SING:
-		return localSingleForceDone
-	case TYPE_PARTITION:
-		return partitionForceDone
-	case TYPE_CREATE_TIMEPOINT:
-		return createTimePointForceDone
-	case TYPE_TEST_SPEED:
-		return testDiskSpeedForceDone
-	}
-	return -1
+	return busType * -1
 }
 
 func GetRunningSignal(busType int) int {
-	switch busType {
-	case TYPE_LOCAL_BATCH:
-		return localBatchRunning
-	case TYPE_LOCAL_SING:
-		return localSingleRunning
-	case TYPE_PARTITION:
-		return partitionRunning
-	case TYPE_CREATE_TIMEPOINT:
-		return createTimePointRunning
-	case TYPE_TEST_SPEED:
-		return testDiskSpeedRunning
-	}
-	return -1
+	return busType
 }
-
-const TaskOverFlag = "1"
-const RemoteSingleSyncType = "0x010"
 
 var WorkerFactoryMap = map[string]func(SN string) *QWorker{}
 

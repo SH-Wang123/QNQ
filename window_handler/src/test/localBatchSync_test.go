@@ -4,12 +4,16 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+	"window_handler/common"
 	"window_handler/config"
 	"window_handler/worker"
 )
 
 var batchFileSyncUT = "/batch_file_sync_ut"
-var batchFileSyncUTLog = "[local single sync ut]: "
+var batchFileSyncUTLog = "[local batch sync ut]: "
+
+var partitionSyncUT = "/partition_sync_ut"
+var partitionSyncUTLog = "[partition sync ut]: "
 
 type localBatchSyncCase struct {
 	startPath     string
@@ -21,6 +25,11 @@ type localBatchSyncCase struct {
 	randomContent bool
 	count         int64
 	bufferSize    worker.CapacityUnit
+}
+
+type periodicCase struct {
+	cycle time.Duration
+	rate  int
 }
 
 var localBatchSyncTestCase = []localBatchSyncCase{
@@ -35,21 +44,30 @@ var periodicLocalBatchSyncTestCase = []localBatchSyncCase{
 	{"/1KB", "/1KB_", 2, 2, 1 * worker.KB, false, true, 0, 1 * worker.KB},
 }
 
+var periodicTestCase = []periodicCase{
+	{time.Minute, 1},
+	{time.Minute, 5},
+	{time.Minute, 30},
+}
+
 var sourcePath = utRoot + batchFileSyncUT + sourceRoot
 var targetPath = utRoot + batchFileSyncUT + targetRoot
 
 func TestLocalBatchSyncCase(t *testing.T) {
 	preBatchFileSyncCase()
-	defer inhibitLog()()
+	defer afterBatchFileSyncCase()
 	batchSyncCreateTargetFile(localBatchSyncTestCase, t)
 	for _, testCase := range localBatchSyncTestCase {
 		startAbsPath, _ := filepath.Abs(sourcePath + testCase.startPath)
-		worker.BatchSyncFile(startAbsPath, targetPath+testCase.startPath)
-		errorInfo := worker.GetBatchSyncError()
+		targetAbsPath := targetPath + testCase.startPath
+		setBatchConfig(startAbsPath, targetAbsPath)
+		startTime := common.GetNowTimeStr()
+		worker.LocalBatchSyncSingleTime(false)
+		errorInfo := worker.GetBatchSyncError(common.GetCurrentSN(common.TYPE_LOCAL_BATCH))
 		if len(errorInfo) == 0 {
-			t.Logf(batchFileSyncUTLog+"case {%v} ok!!! count : {%v},  time: %v", testCase.prefixName, testCase.count, time.Now())
+			t.Logf(batchFileSyncUTLog+"case {%v} ok!!! start time: %v, over time: %v", testCase.prefixName, startTime, common.GetNowTimeStr())
 		} else {
-			t.Logf(batchFileSyncUTLog+"case {%v} error!!! count : {%v},  time: %v", testCase.prefixName, testCase.count, time.Now())
+			t.Logf(batchFileSyncUTLog+"case {%v} error!!! start time: %v, over time: %v", testCase.prefixName, startTime, common.GetNowTimeStr())
 			for info := range errorInfo {
 				t.Errorf(batchFileSyncUTLog+" %v", info)
 			}
@@ -60,49 +78,45 @@ func TestLocalBatchSyncCase(t *testing.T) {
 
 func TestPeriodicLocalBatchSync(t *testing.T) {
 	preBatchFileSyncCase()
-	defer inhibitLog()()
+	defer afterBatchFileSyncCase()
 	batchSyncCreateTargetFile(periodicLocalBatchSyncTestCase, t)
 	configCache := config.SystemConfigCache.Cache.LocalBatchSync
 	for _, testCase := range periodicLocalBatchSyncTestCase {
-		startAbsPath, _ := filepath.Abs(sourcePath + testCase.startPath)
-		startNode := &worker.FileNode{
-			IsDirectory:     true,
-			HasChildren:     true,
-			AbstractPath:    startAbsPath,
-			AnchorPointPath: "",
-			HeadFileNode:    nil,
-			VarianceType:    worker.VARIANCE_ROOT,
-		}
-		worker.GetFileTree(startNode, true)
-		notEndFlag := true
-		go func() {
-			ticker := time.NewTicker(30 * time.Minute)
-			<-ticker.C
-			notEndFlag = false
-		}()
-		configCache.TargetPath = targetPath + testCase.startPath
+		startAbs, _ := filepath.Abs(sourcePath + testCase.startPath)
+		targetAbs := targetPath + testCase.startPath
+		setBatchConfig(startAbs, targetAbs)
 		configCache.SyncPolicy.PolicySwitch = true
-		configCache.SyncPolicy.PeriodicSync.Cycle = time.Minute
-		worker.StartPolicySync(time.Minute, &notEndFlag, true, false, true)
-		errorInfo := worker.GetBatchSyncError()
-		if len(errorInfo) == 0 {
-			t.Logf(batchFileSyncUTLog+"periodic policy case {%v} ok!!!  time: %v", testCase.prefixName, time.Now())
-		} else {
-			t.Logf(batchFileSyncUTLog+"periodic policy  {%v} error!!!  time: %v", testCase.prefixName, time.Now())
-			for info := range errorInfo {
-				t.Errorf(batchFileSyncUTLog+" %v", info)
+		configCache.SyncPolicy.PeriodicSync.Enable = true
+		for _, periodic := range periodicTestCase {
+			notEndFlag := true
+			configCache.SyncPolicy.PeriodicSync.Cycle = periodic.cycle
+			configCache.SyncPolicy.PeriodicSync.Rate = periodic.rate
+			worker.StartPolicySync(time.Minute, &notEndFlag, true, false, false, true)
+			errorInfo := worker.GetBatchSyncError(common.GetCurrentSN(common.TYPE_PARTITION))
+			if len(errorInfo) == 0 {
+				t.Logf(batchFileSyncUTLog+"periodic policy case {%v} ok!!!  time: %v", testCase.prefixName, time.Now())
+			} else {
+				t.Logf(batchFileSyncUTLog+"periodic policy  {%v} error!!!  time: %v", testCase.prefixName, time.Now())
+				for info := range errorInfo {
+					t.Errorf(batchFileSyncUTLog+" %v", info)
+				}
 			}
 		}
 	}
 }
 
 func preBatchFileSyncCase() {
-	createUtPath(batchFileSyncUT)
+	commonPreTest(batchFileSyncUT)
 }
+
+func afterBatchFileSyncCase() {
+	commonAfterTest(batchFileSyncUT)
+}
+
 func batchSyncCreateTargetFile(tc []localBatchSyncCase, t *testing.T) {
 	for _, testCase := range tc {
 		startTime := time.Now()
-		t.Logf("create target file [%v] start, time : %v", testCase.prefixName, time.Now())
+		t.Logf("create target file [%v] start, time : %v", testCase.prefixName, common.GetNowTimeStr())
 		startAbsPath, _ := filepath.Abs(sourcePath + testCase.startPath)
 		count := int64(0)
 		createFileTree(testCase.bufferSize,
@@ -121,7 +135,12 @@ func batchSyncCreateTargetFile(tc []localBatchSyncCase, t *testing.T) {
 			useTime = 1
 		}
 		totalSize := (testCase.count * int64(testCase.fileSize)) / int64(worker.MB)
-		t.Logf("create target file : [%v] over, total size : [%vKB], rate : [%vKB/s], time : %v", testCase.prefixName, totalSize/useTime, totalSize, overTime)
+		t.Logf("create target file : [%v] over, total size : [%vKB], rate : [%vMB/s], time : %v", testCase.prefixName, totalSize/useTime, totalSize, common.GetNowTimeStr())
 		t.Logf("-----------")
 	}
+}
+
+func setBatchConfig(src, target string) {
+	config.SystemConfigCache.Cache.LocalBatchSync.SourcePath = src
+	config.SystemConfigCache.Cache.LocalBatchSync.TargetPath = target
 }

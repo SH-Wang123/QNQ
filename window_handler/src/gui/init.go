@@ -197,7 +197,7 @@ func initRegisterGWFunc() {
 func watchGWChannel() {
 	for {
 		select {
-		case c := <-common.GWChannel:
+		case c := <-common.WGChannel:
 			f := gwChannelRegisterF[c]
 			if f == nil {
 				log.Printf("!!!!!!!!!!!!!!!!!!has a signal doesn't register, num : %v", c)

@@ -10,13 +10,6 @@ const (
 	URL_HRED = "http://"
 )
 
-const (
-	VARIANCE_ROOT = iota
-	VARIANCE_ADD
-	VARIANCE_EDIT
-	VARIANCE_DELETE
-)
-
 type CapacityUnit uint64
 
 const (
@@ -36,26 +29,10 @@ const (
 
 var fileSeparator = getFileSeparator()
 
-type FileNode struct {
-	IsDirectory      bool
-	HasChildren      bool
-	AbstractPath     string
-	AnchorPointPath  string
-	ChildrenNodeList []*FileNode
-	HeadFileNode     *FileNode
-	VarianceType     int
-}
-
 type SyncFileError struct {
 	AbsPath string
 	Reason  string
 }
-
-// LocalBSFileNode /** Local batch source file node
-var LocalBSFileNode *FileNode
-
-// LocalBTFileNode /** Local batch target file node
-var LocalBTFileNode *FileNode
 
 type Disk struct {
 	Name       string

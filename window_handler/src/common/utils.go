@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 var taskCount = 0
@@ -24,4 +25,10 @@ func GetTaskCount() string {
 	taskCount++
 	countLock.Unlock()
 	return fmt.Sprintf("%v", taskCount)
+}
+
+func GetNowTimeStr() string {
+	now := time.Now()
+	ret := fmt.Sprintf("%v", now.Format("2006/01/02 15:04:05"))
+	return ret
 }

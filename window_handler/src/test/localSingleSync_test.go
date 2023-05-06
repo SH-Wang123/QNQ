@@ -3,6 +3,7 @@ package test
 import (
 	"path/filepath"
 	"testing"
+	"window_handler/common"
 	"window_handler/worker"
 )
 
@@ -29,11 +30,12 @@ func TestSingleSync(t *testing.T) {
 	for _, testCase := range singleFileSyncCase {
 		sfAbsPath, _ := filepath.Abs(sourcePath + "/" + testCase.fileName)
 		worker.CreateFile(testCase.bufferSize, sfAbsPath, testCase.fileSize, testCase.randomContent)
-		sf, _ := worker.OpenFile(sfAbsPath, false)
+		sf, _ := common.OpenFile(sfAbsPath, false)
 
 		tfAbsPath, _ := filepath.Abs(targetPath + "/" + testCase.fileName)
-		tf, _ := worker.OpenFile(tfAbsPath, true)
-		caseWorker := worker.NewLocalSingleWorker(sf, tf)
+		tf, _ := common.OpenFile(tfAbsPath, true)
+		sn := common.GetTaskCount()
+		caseWorker := worker.NewLocalSingleWorker(sf, tf, sn, false)
 		caseWorker.Execute()
 		if !worker.CompareMd5(sf, tf) {
 			t.Errorf("[local single sync ut]: ERROR!!! source file : {%v}, target file : {%v}", sfAbsPath, tfAbsPath)

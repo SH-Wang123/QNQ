@@ -1,25 +1,14 @@
 package rest
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"window_handler/common"
 	"window_handler/worker"
 )
 
 func getFileRootMap(c *gin.Context) {
-	abstractPath := c.Query("abstractPath")
-	anchorPointPath := c.Query("anchorPointPath")
-	startNode := &worker.FileNode{
-		IsDirectory:     true,
-		HasChildren:     true,
-		AbstractPath:    fmt.Sprintf("%v", abstractPath),
-		AnchorPointPath: fmt.Sprintf("%v", anchorPointPath),
-		HeadFileNode:    nil,
-	}
-	worker.GetFileTree(startNode, false)
-	dataM := make(map[string][]string)
-	worker.GetFileTreeMap(startNode, &dataM)
+	absPath := c.Query("absPath")
+	pointPath := c.Query("pointPath")
 	rsp := common.NewQResponse(RESPONSE_CODE_OK, dataM)
 	c.JSON(HTTP_OK, rsp)
 }

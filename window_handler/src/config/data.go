@@ -68,6 +68,8 @@ type systemInfo struct {
 	OS              string
 	SystemFramework string
 	MachineName     string
+	MAC             []string
+	IP              []string
 }
 
 type cdpSnapshot struct {

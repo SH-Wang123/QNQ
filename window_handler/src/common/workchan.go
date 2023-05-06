@@ -105,8 +105,8 @@ func (p *QProducer) distributeMsg(msg interface{}) {
 	msgStr := fmt.Sprintf("%v", msg)
 
 	// Worker start flag
-	if msgStr[0:2] == "0x" {
-		SN := msgStr[5:9]
+	if getMsgHeader(msgStr) == "0x" {
+		SN := getMsgSN(msgStr, msgTaskActivation)
 		taskFlag := msgStr[9:10]
 		if taskFlag == TaskOverFlag {
 			go p.RemoveConsumer(SN)
@@ -120,14 +120,14 @@ func (p *QProducer) distributeMsg(msg interface{}) {
 	}
 
 	//TODO Worker init
-	if msgStr[0:2] == "01" {
+	if getMsgHeader(msgStr) == "01" {
 
 		return
 	}
 
 	//Worker content
-	if msgStr[0:2] == "00" {
-		SN := msgStr[2:6]
+	if getMsgHeader(msgStr) == "00" {
+		SN := getMsgSN(msgStr, msgTaskMsg)
 		if p.sub[SN] == nil || len(msgStr)-8 <= 6 {
 			log.Printf("worker SN {%v} is nil", SN)
 		} else {
@@ -151,7 +151,7 @@ func (w *QWorker) Execute(v ...interface{}) {
 			log.Printf("Consumer %s receive : %v", w.SN, m)
 			w.ExecuteFunc(m, w)
 		case <-time.After(timeoutValue):
-			log.Printf("Consumer %s timeout : %v", w.SN)
+			log.Printf("Consumer %s timeout", w.SN)
 			qmqWaitGroup.Done()
 			break
 		default:
@@ -159,4 +159,27 @@ func (w *QWorker) Execute(v ...interface{}) {
 			break
 		}
 	}
+}
+
+func getMsgHeader(msg string) string {
+	return msg[0:2]
+}
+
+const (
+	msgTaskActivation = iota
+	msgTaskInit
+	msgTaskMsg
+	msgTaskLocal
+)
+
+func getMsgSN(msg string, msgType int) string {
+	switch msgType {
+	case msgTaskActivation:
+		return msg[5:9]
+	case msgTaskInit:
+		return msg[5:9]
+	case msgTaskMsg:
+		return msg[2:6]
+	}
+	return ""
 }

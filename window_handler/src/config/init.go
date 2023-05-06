@@ -10,6 +10,8 @@ var LocalSystemInfo = systemInfo{
 	OS:              runtime.GOOS,
 	SystemFramework: runtime.GOARCH,
 	MachineName:     getLocalMachineName(),
+	MAC:             getMac(),
+	IP:              getIp(),
 }
 
 var TargetSystemInfo = systemInfo{

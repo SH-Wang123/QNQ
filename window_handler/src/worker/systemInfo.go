@@ -49,10 +49,9 @@ func GetPartitionsInfo() {
 }
 
 func TestDiskSpeed(bufferSize CapacityUnit, totalSize CapacityUnit, drive string) (writeSpeed int, readSpeed int) {
-	common.SendSignal2GWChannel(common.GetRunningSignal(common.TYPE_PARTITION))
-	common.SendSignal2GWChannel(common.GetForceDoneSignal(common.TYPE_PARTITION))
+	common.SendSignal2WGChannel(common.GetRunningSignal(common.TYPE_TEST_SPEED))
+	defer common.SendSignal2WGChannel(common.GetForceDoneSignal(common.TYPE_TEST_SPEED))
 	fileName := drive + "/test_speed"
-	common.DeleteFileOrDir(fileName)
 
 	_, wirteTime := CreateFile(bufferSize, fileName, totalSize, true)
 	defer common.DeleteFileOrDir(fileName)

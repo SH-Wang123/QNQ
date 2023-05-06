@@ -26,5 +26,5 @@ func TestCompareMd5(t *testing.T) {
 	sf, _ := os.Open("")
 	tf, _ := os.Open("")
 	t.Logf("%v", worker.CompareMd5(sf, tf))
-	worker.GetBatchSyncError()
+	//worker.GetBatchSyncError()
 }

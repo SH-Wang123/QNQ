@@ -26,15 +26,19 @@ var (
 
 var gwLock sync.RWMutex
 
-var GWChannel = make(chan int)
+// WGChannel Worker流向前端的通道，不关注返回值，仅做通知
+var WGChannel = make(chan int, 32)
 
-func SendSignal2GWChannel(signal int) {
+// GWChannel 前端向Worker反馈数据的通道
+var GWChannel = make(chan int, 32)
+
+func SendSignal2WGChannel(signal int) {
 	gwLock.Lock()
 	defer gwLock.Unlock()
 	if CLI_FLAG {
 
 	} else {
-		GWChannel <- signal
+		WGChannel <- signal
 	}
 }
 

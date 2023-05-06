@@ -1,10 +1,43 @@
 package config
 
-import "os"
+import (
+	"fmt"
+	"net"
+	"os"
+)
 
 func getLocalMachineName() string {
 	machineName, _ := os.Hostname()
 	return machineName
+}
+
+func getMac() (macs []string) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return
+	}
+	for _, inter := range interfaces {
+		if inter.HardwareAddr != nil {
+			macs = append(macs, fmt.Sprintf("%v", inter.HardwareAddr))
+		}
+	}
+	return macs
+}
+
+func getIp() (ips []string) {
+	interfacesAddr, err := net.InterfaceAddrs()
+	if err != nil {
+		return
+	}
+	for _, address := range interfacesAddr {
+		ipNet, isVailIpNet := address.(*net.IPNet)
+		if isVailIpNet && !ipNet.IP.IsLoopback() {
+			if ipNet.IP.To4() != nil {
+				ips = append(ips, ipNet.IP.String())
+			}
+		}
+	}
+	return ips
 }
 
 func getTargetSystemInfo() string {

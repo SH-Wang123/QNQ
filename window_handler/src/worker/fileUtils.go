@@ -293,10 +293,6 @@ func getMinTimeSubNum(subs *[7]int) int {
 	return minNum
 }
 
-func GetFileRootTree(root string) {
-
-}
-
 func ReverseCompareAndDelete(sourcePath string, targetPath string) {
 	exist0, err0 := common.IsExist(sourcePath)
 	exist1, err1 := common.IsExist(targetPath)
@@ -316,17 +312,6 @@ func ReverseCompareAndDelete(sourcePath string, targetPath string) {
 		if sfChildMap[child.Name()] == 0 {
 			common.DeleteFileOrDir(targetPath + fileSeparator + child.Name())
 		}
-	}
-}
-
-func GetNilNode(absPath string) *FileNode {
-	return &FileNode{
-		IsDirectory:     true,
-		HasChildren:     true,
-		AbstractPath:    absPath,
-		AnchorPointPath: "",
-		HeadFileNode:    nil,
-		VarianceType:    VARIANCE_ROOT,
 	}
 }
 
@@ -410,4 +395,9 @@ func getNowTimeStr() string {
 	now := time.Now()
 	ret := fmt.Sprintf("%v", now.Format("2006/01/02 15:04:05"))
 	return ret
+}
+
+// GetFileTree 获取文件树
+func GetFileTree(startPath string, layer int) {
+
 }
