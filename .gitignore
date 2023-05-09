@@ -19,3 +19,4 @@ window_handler/src/bin/*
 window_handler/src/test/system_config
 window_handler/src/OLog.csv
 window_handler/src/QTP.csv
+*.csv

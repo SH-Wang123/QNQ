@@ -29,13 +29,6 @@ func getRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
 			ipAddress,
 		)
 
-		status := binding.NewBool()
-		status.Set(network.ConnectStauts)
-		connectedStatusComponent := container.New(layout.NewHBoxLayout(),
-			widget.NewLabel("Connected Status : "),
-			widget.NewLabelWithData(binding.BoolToString(status)),
-		)
-
 		infoLabel := widget.NewTextGridFromString("")
 
 		localPathBind := getBindString(config.SystemConfigCache.Value().QnqSTarget.LocalPath)
@@ -86,7 +79,6 @@ func getRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
 			localPathComp,
 			remotePathComp,
 			ipAdressComp,
-			connectedStatusComponent,
 			infoLabel,
 			testButton,
 			saveButton,
@@ -124,6 +116,6 @@ func checkTargetConnect(ip string, infoLabel *widget.TextGrid) bool {
 
 func getConnectQTargetButton() *widget.Button {
 	return widget.NewButton("Connect Target", func() {
-		network.StartQClient()
+
 	})
 }

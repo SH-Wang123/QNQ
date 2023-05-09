@@ -1,7 +1,7 @@
 package network
 
 func init() {
-	go StartQClient()
-	go StartQServer()
+	go StartQTargets()
+	go StartQServers()
 	NetChan.StartPump()
 }

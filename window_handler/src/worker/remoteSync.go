@@ -39,20 +39,33 @@ func NewQNQAuthSender() *common.QSender {
 		SN:                 common.GetSNCount(),
 		Active:             false,
 		Status:             common.TASK_FREE,
-		ExecuteFunc:        requestQNQAuth,
+		ExecuteFunc:        sendQNQAuth,
 		PrivateVariableMap: make(map[string]interface{}),
 	}
 }
 
-func requestQNQAuth(s *common.QSender) {
+func NewQNQAuthReceiver(SN string) *common.QWorker {
+	return &common.QWorker{
+		SN:              SN,
+		Active:          true,
+		Status:          common.TASK_FREE,
+		ExecuteFunc:     qnqAuthReceiver,
+		DeconstructFunc: receiverDeconstruct,
+	}
+}
+
+func sendQNQAuth(s *common.QSender) {
 	//激活认证接收者
 	workerSignal := common.GetQMQTaskPre(common.TYPE_REMOTE_QNQ_AUTH) + s.SN + "0"
-	_, _ = network.WriteStrToQTarget(workerSignal)
-	//发送认证信息，携带IP和MAC
+	remoteIp := fmt.Sprintf("%v", s.PrivateVariableMap["remoteIp"])
+	_, _ = network.WriteStrToQTarget(workerSignal, remoteIp)
 	var msgPrefix = dataMsgPreFix + s.SN
-
-	network.WriteStrToQTarget(network.LoadContent(msgPrefix, config.SystemConfigCache.Value().QnqSTarget.RemotePath))
+	network.WriteStrToQTarget(network.LoadContent(msgPrefix, config.SystemConfigCache.Value().QnqSTarget.RemotePath), remoteIp)
 	//发送结束标志
+}
+
+func qnqAuthReceiver(msg interface{}, w *common.QWorker) {
+
 }
 
 func remoteSingleFileSyncReceiver(msg interface{}, w *common.QWorker) {
@@ -106,9 +119,10 @@ func sendSingleFile(s *common.QSender) {
 			log.Printf("close file err : %v", err.Error())
 		}
 	}(f)
+	remoteIp := fmt.Sprintf("%v", s.PrivateVariableMap["remoteIp"])
 	workerSignal := common.GetQMQTaskPre(common.TYPE_REMOTE_SINGLE) + s.SN + "0"
-	_, _ = network.WriteStrToQTarget(workerSignal)
-	network.WriteStrToQTarget(network.LoadContent(msgPrefix, config.SystemConfigCache.Value().QnqSTarget.RemotePath))
+	_, _ = network.WriteStrToQTarget(workerSignal, remoteIp)
+	network.WriteStrToQTarget(network.LoadContent(msgPrefix, config.SystemConfigCache.Value().QnqSTarget.RemotePath), remoteIp)
 	buf := make([]byte, 4094)
 	var msgfixBytes = []byte{'1', '1'}
 	for {
@@ -122,14 +136,14 @@ func sendSingleFile(s *common.QSender) {
 			break
 		}
 		var fBytes = append(msgfixBytes, buf[:n]...)
-		_, err = network.WriteStrToQTarget(network.LoadContent(msgPrefix, string(fBytes)))
+		_, err = network.WriteStrToQTarget(network.LoadContent(msgPrefix, string(fBytes)), remoteIp)
 		if err != nil {
 			log.Printf("conn.Write error : %v", err.Error())
 			break
 		}
 	}
 	workerSignal = common.GetQMQTaskPre(common.TYPE_REMOTE_SINGLE) + s.SN + "1"
-	_, _ = network.WriteStrToQTarget(workerSignal)
+	_, _ = network.WriteStrToQTarget(workerSignal, remoteIp)
 }
 
 func GetRemoteFileRootMap(ip string, abstractPath string, anchorPointPath string) map[string][]string {

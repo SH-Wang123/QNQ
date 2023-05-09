@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"strings"
 	"time"
 	"window_handler/common"
 	"window_handler/config"
@@ -18,10 +19,7 @@ const (
 	EndMessage        = '\n'
 )
 
-var ConnectClient net.Conn
-var ConnectServer net.Conn
-var ConnectStauts = false
-var currentTask = 0x00000001
+var qNetCells = make(map[string]qNetCell, 8)
 
 var NetChan = common.NewProducer()
 
@@ -44,54 +42,68 @@ func handleConnect(conn net.Conn, isClient bool) {
 	}
 }
 
-func StartQServer() {
-	log.Printf("start new server")
+func StartQServers() {
 	listener, err := net.Listen(ServerNetworkType, ServerPort)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	defer listener.Close()
-	log.Printf("waiting client connect... ")
 	for {
-		ConnectServer, err := listener.Accept()
+		connect, err := listener.Accept()
+		remoteIp := connect.RemoteAddr().String()
+		if !checkQTargetAuth(remoteIp) {
+			err := connect.Close()
+			if err != nil {
+				return
+			}
+		}
 		if err != nil {
 			log.Fatalln(err)
 		}
-		go handleConnect(ConnectServer, false)
+		netCell := qNetCells[remoteIp]
+		netCell.qServer = &connect
+		go handleConnect(connect, false)
+		log.Printf("qnq client connect, ip : %v ", remoteIp)
 	}
 }
 
-func StartQClient() {
+func StartQTargets() {
 	if config.SystemConfigCache.Value().QnqSTarget.Ip == "0.0.0.0" {
 		log.Printf("not set QNQ Target")
 		return
 	}
-	var err error
-	log.Printf("client connect %v\n", config.SystemConfigCache.Value().QnqSTarget.Ip+ServerPort)
-	ConnectClient, err = net.Dial(ServerNetworkType, config.SystemConfigCache.Value().QnqSTarget.Ip+ServerPort)
-	if err != nil {
-		return
-	}
-	ConnectClient.SetReadDeadline(time.Now().Add(time.Second * time.Duration(30)))
-	if err != nil {
-		log.Printf(err.Error())
-	} else {
-		log.Printf("client %v connected \n", ConnectClient.RemoteAddr())
-		ret, err := WriteStrToQTarget("test")
-		if err == nil && ret != "" {
-			ConnectStauts = true
-			go handleConnect(ConnectClient, true)
-			log.Printf("client start ...")
+	targetIps := strings.Split(config.SystemConfigCache.Value().QnqSTarget.Ip, ",")
+	for _, ip := range targetIps {
+		var err error
+		log.Printf("client connect %v\n", config.SystemConfigCache.Value().QnqSTarget.Ip+ServerPort)
+		connect, err := net.Dial(ServerNetworkType, ip+ServerPort)
+		if err != nil {
+			return
+		}
+		connect.SetReadDeadline(time.Now().Add(time.Second * time.Duration(30)))
+		if err != nil {
+			log.Printf(err.Error())
 		} else {
-			ConnectStauts = false
+			log.Printf("client %v connected \n", connect.RemoteAddr())
+			ret, err := WriteStrToQTarget("test", ip)
+			netCell := qNetCells[ip]
+			if err == nil && ret != "" {
+				netCell.setTargetStatus(true)
+				go handleConnect(connect, true)
+				log.Printf("client start ...")
+				netCell.qTarget = &connect
+			} else {
+				netCell.setTargetStatus(false)
+			}
 		}
 	}
+
 }
 
-func WriteStrToQTarget(message string) (string, error) {
+func WriteStrToQTarget(message string, targetIp string) (string, error) {
 	var err error
 	var ret string
-	_, err = write(ConnectClient, message)
+	_, err = write(*qNetCells[targetIp].qTarget, message)
 	if err != nil {
 		log.Printf(err.Error())
 		return "", err
@@ -104,8 +116,8 @@ func WriteStrToQTarget(message string) (string, error) {
 	return ret, err
 }
 
-func ReadStrFromQTarget() string {
-	ret, err := readStr(ConnectClient)
+func ReadStrFromQTarget(targetIp string) string {
+	ret, err := readStr(*qNetCells[targetIp].qTarget)
 	if err != nil {
 		log.Printf(err.Error())
 		return ""
@@ -113,8 +125,8 @@ func ReadStrFromQTarget() string {
 	return ret
 }
 
-func ReadBytesFromQTarget() bytes.Buffer {
-	ret, err := readBytes(ConnectClient)
+func ReadBytesFromQTarget(targetIp string) bytes.Buffer {
+	ret, err := readBytes(*qNetCells[targetIp].qTarget)
 	if err != nil {
 		log.Printf(err.Error())
 		return bytes.Buffer{}
