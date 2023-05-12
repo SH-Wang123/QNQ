@@ -8,7 +8,6 @@ import (
 	"os"
 	"sync"
 	"window_handler/common"
-	"window_handler/config"
 	"window_handler/network"
 )
 
@@ -34,16 +33,6 @@ func NewRemoteSyncSender() *common.QSender {
 	}
 }
 
-func NewQNQAuthSender() *common.QSender {
-	return &common.QSender{
-		SN:                 common.GetSNCount(),
-		Active:             false,
-		Status:             common.TASK_FREE,
-		ExecuteFunc:        sendQNQAuth,
-		PrivateVariableMap: make(map[string]interface{}),
-	}
-}
-
 func NewQNQAuthReceiver(SN string) *common.QWorker {
 	return &common.QWorker{
 		SN:              SN,
@@ -52,16 +41,6 @@ func NewQNQAuthReceiver(SN string) *common.QWorker {
 		ExecuteFunc:     qnqAuthReceiver,
 		DeconstructFunc: receiverDeconstruct,
 	}
-}
-
-func sendQNQAuth(s *common.QSender) {
-	//激活认证接收者
-	workerSignal := common.GetQMQTaskPre(common.TYPE_REMOTE_QNQ_AUTH) + s.SN + "0"
-	remoteIp := fmt.Sprintf("%v", s.PrivateVariableMap["remoteIp"])
-	_, _ = network.WriteStrToQTarget(workerSignal, remoteIp)
-	var msgPrefix = dataMsgPreFix + s.SN
-	network.WriteStrToQTarget(network.LoadContent(msgPrefix, config.SystemConfigCache.Value().QnqSTarget.RemotePath), remoteIp)
-	//发送结束标志
 }
 
 func qnqAuthReceiver(msg interface{}, w *common.QWorker) {
@@ -122,7 +101,7 @@ func sendSingleFile(s *common.QSender) {
 	remoteIp := fmt.Sprintf("%v", s.PrivateVariableMap["remoteIp"])
 	workerSignal := common.GetQMQTaskPre(common.TYPE_REMOTE_SINGLE) + s.SN + "0"
 	_, _ = network.WriteStrToQTarget(workerSignal, remoteIp)
-	network.WriteStrToQTarget(network.LoadContent(msgPrefix, config.SystemConfigCache.Value().QnqSTarget.RemotePath), remoteIp)
+	//network.WriteStrToQTarget(network.LoadContent(msgPrefix, config.SystemConfigCache.Value().QnqSTarget.RemotePath), remoteIp)
 	buf := make([]byte, 4094)
 	var msgfixBytes = []byte{'1', '1'}
 	for {
@@ -167,4 +146,8 @@ func TestQnqTarget(ip string) bool {
 	var retStr string
 	getObjFromResponse(resp, &retStr)
 	return retStr == "ok"
+}
+
+func ConnectTarget(ip string) {
+	network.ConnectTarget(ip)
 }

@@ -15,8 +15,7 @@ var SystemConfigCache cacheConfig
 
 type systemConfig struct {
 	Version          string           `json:"version"`
-	QnqSTarget       qnqTarget        `json:"qnq_single_target"`
-	QnqBTarget       qnqTarget        `json:"qnq_batch_target"`
+	QNQNetCells      []configNetCell  `json:"qnq_net_cells"`
 	LocalSingleSync  localSync        `json:"local_single_sync"`
 	LocalBatchSync   localSync        `json:"local_batch_sync"`
 	PartitionSync    localSync        `json:"local_partition_sync"`
@@ -57,11 +56,11 @@ type varianceAnalysis struct {
 	Md5       bool `json:"md5"`
 }
 
-type qnqTarget struct {
+type configNetCell struct {
 	Ip         string     `json:"qnq_target_ip"`
-	LocalPath  string     `json:"local_path"`
-	RemotePath string     `json:"remote_path"`
 	SyncPolicy syncPolicy `json:"sync_policy"`
+	Status     int        `json:"status"`
+	Mark       string     `json:"mark"`
 }
 
 type systemInfo struct {
@@ -111,21 +110,32 @@ func (a *cacheConfig) Set(s systemConfig) {
 	a.NotifyAll()
 }
 
-func (a *cacheConfig) GetSyncPolicy(isBatch bool, isRemote bool, isPartitionSync bool) *syncPolicy {
+func (a *cacheConfig) GetLocalSyncPolicy(isBatch bool, isPartitionSync bool) *syncPolicy {
 	if isPartitionSync {
 		return &a.Cache.PartitionSync.SyncPolicy
 	} else if isBatch {
-		if isRemote {
-			return &a.Cache.QnqSTarget.SyncPolicy
-		}
 		return &a.Cache.LocalBatchSync.SyncPolicy
 	} else {
-		if isRemote {
-			return &a.Cache.QnqBTarget.SyncPolicy
-		}
 		return &a.Cache.LocalSingleSync.SyncPolicy
 	}
 }
 
 type LocalConfig struct {
+}
+
+func (c *configNetCell) GetTargetStatus() bool {
+	return c.Status&10 >= 10
+}
+
+func (c *configNetCell) GetServerStatus() bool {
+	return c.Status&01 == 1
+}
+
+func (s *systemConfig) AddNilNetCell() {
+	cell := configNetCell{
+		Ip:     "0.0.0.0",
+		Status: 0,
+		Mark:   "",
+	}
+	s.QNQNetCells = append(s.QNQNetCells, cell)
 }

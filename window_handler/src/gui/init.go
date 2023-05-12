@@ -22,13 +22,17 @@ var topWindow fyne.Window
 const preferenceCurrentNavigation = "currentNavigation"
 
 func init() {
-	I18n()
-	initRegisterGWFunc()
-	go watchGWChannel()
+	i18n()
+	initRegisterWGFunc()
+	go watchWGChannel()
 }
 
-func I18n() {
+func i18n() {
 	initTimeCycle()
+}
+
+func initGlobalDialog() {
+
 }
 
 func StartGUI() {
@@ -71,6 +75,7 @@ func StartGUI() {
 	}
 	SetMainWin(&w)
 	w.Resize(fyne.NewSize(config.WindowWidth, config.WindowHeight))
+	initGlobalDialog()
 	w.ShowAndRun()
 }
 
@@ -168,39 +173,42 @@ func initTimeCycle() {
 	dayCycleMap[dayArrayList[6]] = time.Saturday
 }
 
-var gwChannelRegisterF = make(map[int]func(), 16)
+var wgChannelRegisterF = make(map[int]func(), 16)
 
 // registerGWFunc GW管道的响应函数均在此注册
-func registerGWFunc(signal int, f func()) {
-	gwChannelRegisterF[signal] = f
+func registerWGFunc(signal int, f func()) {
+	wgChannelRegisterF[signal] = f
 }
 
 // initRegisterGWFunc 初始化注册GW响应函数
-func initRegisterGWFunc() {
+func initRegisterWGFunc() {
 	//local batch sync
-	registerGWFunc(common.GetRunningSignal(common.TYPE_LOCAL_BATCH), localBatchRunningHandle)
-	registerGWFunc(common.GetForceDoneSignal(common.TYPE_LOCAL_BATCH), localBatchDoneHandle)
+	registerWGFunc(common.GetRunningSignal(common.TYPE_LOCAL_BATCH), localBatchRunningHandle)
+	registerWGFunc(common.GetForceDoneSignal(common.TYPE_LOCAL_BATCH), localBatchDoneHandle)
 	//local single sync
-	registerGWFunc(common.GetRunningSignal(common.TYPE_LOCAL_SING), localSingleRunningHandle)
-	registerGWFunc(common.GetForceDoneSignal(common.TYPE_LOCAL_SING), localSingleDoneHandle)
+	registerWGFunc(common.GetRunningSignal(common.TYPE_LOCAL_SING), localSingleRunningHandle)
+	registerWGFunc(common.GetForceDoneSignal(common.TYPE_LOCAL_SING), localSingleDoneHandle)
 	//test disk speed
-	registerGWFunc(common.GetRunningSignal(common.TYPE_TEST_SPEED), testSpeedRunningHandle)
-	registerGWFunc(common.GetForceDoneSignal(common.TYPE_TEST_SPEED), testSpeedDoneHandle)
+	registerWGFunc(common.GetRunningSignal(common.TYPE_TEST_SPEED), testSpeedRunningHandle)
+	registerWGFunc(common.GetForceDoneSignal(common.TYPE_TEST_SPEED), testSpeedDoneHandle)
 	//partition sync
-	registerGWFunc(common.GetRunningSignal(common.TYPE_PARTITION), partitionRunningHandle)
-	registerGWFunc(common.GetForceDoneSignal(common.TYPE_PARTITION), partitionDoneHandle)
+	registerWGFunc(common.GetRunningSignal(common.TYPE_PARTITION), partitionRunningHandle)
+	registerWGFunc(common.GetForceDoneSignal(common.TYPE_PARTITION), partitionDoneHandle)
 	//partition sync
-	registerGWFunc(common.GetRunningSignal(common.TYPE_CREATE_TIMEPOINT), createTPRunningHandle)
-	registerGWFunc(common.GetForceDoneSignal(common.TYPE_CREATE_TIMEPOINT), createTPDoneHandle)
+	registerWGFunc(common.GetRunningSignal(common.TYPE_CREATE_TIMEPOINT), createTPRunningHandle)
+	registerWGFunc(common.GetForceDoneSignal(common.TYPE_CREATE_TIMEPOINT), createTPDoneHandle)
+	//remote qnq auth
+	registerWGFunc(common.GetRunningSignal(common.TYPE_REMOTE_QNQ_AUTH), qnqAuthRunningHandle)
 }
 
-func watchGWChannel() {
+func watchWGChannel() {
 	for {
 		select {
 		case c := <-common.WGChannel:
-			f := gwChannelRegisterF[c]
+			f := wgChannelRegisterF[c]
 			if f == nil {
-				log.Printf("!!!!!!!!!!!!!!!!!!has a signal doesn't register, num : %v", c)
+				log.Printf("!!!!!!!!!!!!!!!!!!has a signal doesn't register, num : %v, wg", c)
+				continue
 			}
 			f()
 		}
@@ -260,6 +268,32 @@ func createTPRunningHandle() {
 
 func createTPDoneHandle() {
 
+}
+
+func qnqAuthRunningHandle() {
+	remoteAuthDialog = dialog.NewConfirm("Remote QNQ want to auth", common.CurrentWaitAuthIp, remoteAuthDialogFunc, *mainWin)
+	remoteAuthDialog.SetDismissText("Refuse")
+	remoteAuthDialog.SetConfirmText("Agree")
+	remoteAuthDialog.SetDismissText("Refuse(60s)")
+	remoteAuthShowing = true
+	go func() {
+		i := 0
+		for {
+			if !remoteAuthShowing {
+				return
+			}
+			i++
+			time.Sleep(1 * time.Second)
+			remoteAuthDialog.SetDismissText(fmt.Sprintf("Refuse(%vs)", 60-i))
+			if i == 60 {
+				remoteAuthDialog.Hide()
+				common.SendSignal2GWChannel(common.SIGNAL_AUTH_NO_PASS)
+				remoteAuthShowing = false
+				return
+			}
+		}
+	}()
+	remoteAuthDialog.Show()
 }
 
 func showSyncError(busType int) {

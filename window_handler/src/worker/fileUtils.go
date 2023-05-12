@@ -222,7 +222,7 @@ func GetTimeSum(daySub int, hourSub int, minSub int) time.Duration {
 }
 
 func getNextTimeFromConfig(isBatchSync bool, isRemoteSync bool, isPartition bool) time.Duration {
-	configCache := config.SystemConfigCache.GetSyncPolicy(isBatchSync, isRemoteSync, isPartition)
+	configCache := config.SystemConfigCache.GetLocalSyncPolicy(isBatchSync, isPartition)
 	nextTime := GetNextSyncTime(
 		configCache.TimingSync.Days,
 		configCache.TimingSync.Minute,

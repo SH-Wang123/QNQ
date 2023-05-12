@@ -65,6 +65,11 @@ const (
 	TYPE_REMOTE_QNQ_AUTH
 )
 
+const (
+	SIGNAL_AUTH_PASS    = 1000
+	SIGNAL_AUTH_NO_PASS = 1001
+)
+
 func GetForceDoneSignal(busType int) int {
 	return busType * -1
 }

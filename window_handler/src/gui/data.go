@@ -103,6 +103,12 @@ var (
 			getRemoteSingleComponent,
 			true,
 		},
+		"ManageRemoteQNQ": {
+			"Mange Remote QNQ",
+			"Manage remote qnq.\nPlease auth the connection first!",
+			getManageRemoteQNQComponent,
+			true,
+		},
 		"remoteSingleSync": {
 			"Remote Single Sync",
 			"Click start button to begin sync.\nPlease test the connection first!",
@@ -162,7 +168,7 @@ var (
 	NavigationIndex = map[string][]string{
 		"":              {"localSync", "remoteSync", "snapshot", "systemInfo", "systemSetting"},
 		"localSync":     {"localBatchSync", "localSingleSync", "partitionSync"},
-		"remoteSync":    {"remoteSingleSync"},
+		"remoteSync":    {"ManageRemoteQNQ", "remoteSingleSync"},
 		"snapshot":      {"timePoint"},
 		"systemInfo":    {"diskInfo", "testDiskSpeed"},
 		"systemSetting": {"olog"},

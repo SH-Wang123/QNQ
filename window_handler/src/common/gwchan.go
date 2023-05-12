@@ -10,6 +10,7 @@ var CLI_FLAG = false
 var currentLockMap = make(map[int]*sync.WaitGroup)
 var currentSNMap = make(map[int]string)
 var runningFlagMap = make(map[int]bool)
+var CurrentWaitAuthIp string
 
 var (
 	localPartStartLock       = &sync.WaitGroup{}
@@ -25,6 +26,7 @@ var (
 )
 
 var gwLock sync.RWMutex
+var wgLock sync.RWMutex
 
 // WGChannel Worker流向前端的通道，不关注返回值，仅做通知
 var WGChannel = make(chan int, 32)
@@ -33,12 +35,22 @@ var WGChannel = make(chan int, 32)
 var GWChannel = make(chan int, 32)
 
 func SendSignal2WGChannel(signal int) {
+	wgLock.Lock()
+	defer wgLock.Unlock()
+	if CLI_FLAG {
+
+	} else {
+		WGChannel <- signal
+	}
+}
+
+func SendSignal2GWChannel(signal int) {
 	gwLock.Lock()
 	defer gwLock.Unlock()
 	if CLI_FLAG {
 
 	} else {
-		WGChannel <- signal
+		GWChannel <- signal
 	}
 }
 

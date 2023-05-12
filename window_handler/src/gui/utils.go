@@ -181,7 +181,7 @@ func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, isPartitionSync bool,
 		var usePeriodicSyncCheck *widget.Check
 		var useTimingSyncCheck *widget.Check
 		var policyEnableCheck *widget.Check
-		configCache := config.SystemConfigCache.GetSyncPolicy(isBatchSync, isRemoteSync, isPartitionSync)
+		configCache := config.SystemConfigCache.GetLocalSyncPolicy(isBatchSync, isPartitionSync)
 		rateList := make([]string, 0)
 		cycleList := make([]string, 0)
 		if isPartitionSync {
@@ -426,4 +426,14 @@ func getCancelButton(busType int) *widget.Button {
 	})
 	but.Disable()
 	return but
+}
+
+func getLabelInput(labelText string, inputText string) (*fyne.Container, *widget.Entry) {
+	ipBind := getBindString(inputText)
+	ipInput := widget.NewEntryWithData(ipBind)
+	return container.New(
+		layout.NewFormLayout(),
+		widget.NewLabel(labelText),
+		ipInput,
+	), ipInput
 }

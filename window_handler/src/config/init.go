@@ -62,17 +62,10 @@ func loadDefaultConfig() {
 		Speed:      NOT_SET_STR,
 		CheckMd5:   false,
 	}
-	defaultRemote := qnqTarget{
-		Ip:         "0.0.0.0",
-		LocalPath:  NOT_SET_STR,
-		RemotePath: NOT_SET_STR,
-		SyncPolicy: defaultSyncPolicy,
-	}
 
 	defaultConfig := systemConfig{
 		Version:         Version,
-		QnqSTarget:      defaultRemote,
-		QnqBTarget:      defaultRemote,
+		QNQNetCells:     make([]configNetCell, 0),
 		LocalSingleSync: defaultLocal,
 		LocalBatchSync:  defaultLocal,
 		PartitionSync:   defaultLocal,

@@ -2,14 +2,14 @@ package network
 
 import "net"
 
-type qNetCell struct {
+type QNetCell struct {
 	qTarget *net.Conn
 	qServer *net.Conn
 	//target status | server status
 	status int
 }
 
-func (qn *qNetCell) setTargetStatus(status bool) {
+func (qn *QNetCell) setTargetStatus(status bool) {
 	if status {
 		qn.status = qn.status | 10
 	} else {
@@ -17,7 +17,7 @@ func (qn *qNetCell) setTargetStatus(status bool) {
 	}
 }
 
-func (qn *qNetCell) setServerStatus(status bool) {
+func (qn *QNetCell) setServerStatus(status bool) {
 	if status {
 		qn.status = qn.status | 01
 	} else {
@@ -25,11 +25,11 @@ func (qn *qNetCell) setServerStatus(status bool) {
 	}
 }
 
-func (qn *qNetCell) getTargetStatus() bool {
+func (qn *QNetCell) getTargetStatus() bool {
 	return qn.status&10 >= 10
 }
 
-func (qn *qNetCell) getServerStatus() bool {
+func (qn *QNetCell) getServerStatus() bool {
 	return qn.status&01 == 1
 }
 
