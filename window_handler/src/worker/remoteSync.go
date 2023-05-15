@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"sync"
@@ -150,4 +151,23 @@ func TestQnqTarget(ip string) bool {
 
 func ConnectTarget(ip string) {
 	network.ConnectTarget(ip)
+}
+
+func GetQNetCell(ip string) *network.QNetCell {
+	return network.GetQNetCell(ip)
+}
+
+func GetAllQNetCells() map[string]*network.QNetCell {
+	return network.GetAllQNetCells()
+}
+
+func GetAllQServers() []*net.Conn {
+	cells := GetAllQNetCells()
+	servers := make([]*net.Conn, 0)
+	for _, cell := range cells {
+		if cell.QServer != nil {
+			servers = append(servers, cell.QTarget)
+		}
+	}
+	return servers
 }

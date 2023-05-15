@@ -18,6 +18,7 @@ import (
 )
 
 var topWindow fyne.Window
+var menuTree *widget.Tree
 
 const preferenceCurrentNavigation = "currentNavigation"
 
@@ -32,7 +33,9 @@ func i18n() {
 }
 
 func initGlobalDialog() {
-
+	syncErrorDialog = dialog.NewInformation("Sync task warning!", "Sync task enters repeatedly, please adjust the time interval.", *mainWin)
+	waitAuthDialog = dialog.NewInformation("Waiting remote qnq auth", "Please wait.", *mainWin)
+	authErrorDialog = dialog.NewInformation("Remote qnq auth error", "The link is blocked or the other party does not agree.", *mainWin)
 }
 
 func StartGUI() {
@@ -42,8 +45,8 @@ func StartGUI() {
 	topWindow = w
 	w.SetMaster()
 	content := container.NewMax()
-	title := widget.NewLabel("Component name")
-	intro := widget.NewLabel("An introduction would probably go\nhere, as well as a")
+	title := widget.NewLabel("QNQ Sync")
+	intro := widget.NewLabel("Welcome to use qnq.")
 	intro.Wrapping = fyne.TextWrapWord
 	setNavigation := func(t Navigation) {
 		if fyne.CurrentDevice().IsMobile() {
@@ -66,13 +69,9 @@ func StartGUI() {
 
 	tutorial := container.NewBorder(
 		container.NewVBox(title, widget.NewSeparator(), intro), nil, nil, nil, content)
-	if fyne.CurrentDevice().IsMobile() {
-		w.SetContent(makeNav(setNavigation, false))
-	} else {
-		split := container.NewHSplit(makeNav(setNavigation, true), tutorial)
-		split.Offset = 0.2
-		w.SetContent(split)
-	}
+	split := container.NewHSplit(makeNav(setNavigation, true), tutorial)
+	split.Offset = 0.2
+	w.SetContent(split)
 	SetMainWin(&w)
 	w.Resize(fyne.NewSize(config.WindowWidth, config.WindowHeight))
 	initGlobalDialog()
@@ -85,7 +84,7 @@ func StartGUI() {
 func makeNav(setNavigation func(navigation Navigation), loadPrevious bool) fyne.CanvasObject {
 	a := fyne.CurrentApp()
 
-	tree := &widget.Tree{
+	menuTree = &widget.Tree{
 		ChildUIDs: func(uid string) []string {
 			return NavigationIndex[uid]
 		},
@@ -123,7 +122,7 @@ func makeNav(setNavigation func(navigation Navigation), loadPrevious bool) fyne.
 
 	if loadPrevious {
 		currentPref := a.Preferences().StringWithFallback(preferenceCurrentNavigation, "welcome")
-		tree.Select(currentPref)
+		menuTree.Select(currentPref)
 	}
 
 	themes := container.NewGridWithColumns(2,
@@ -138,7 +137,7 @@ func makeNav(setNavigation func(navigation Navigation), loadPrevious bool) fyne.
 	if lastVersion == "" || lastVersion == config.SystemConfigCache.Value().Version {
 		lastVersion = "Project Link"
 	} else {
-		lastVersion = "Lastest version is  " + lastVersion
+		lastVersion = "Latest version is  " + lastVersion
 	}
 	projectUrl, _ := url.Parse("https://github.com/wangshenghao1/QNQ")
 	versionInfo := widget.NewHyperlink(lastVersion, projectUrl)
@@ -147,16 +146,15 @@ func makeNav(setNavigation func(navigation Navigation), loadPrevious bool) fyne.
 		themes,
 	)
 
-	return container.NewBorder(nil, flootBox, nil, nil, tree)
+	return container.NewBorder(nil, flootBox, nil, nil, menuTree)
 }
 
 func unsupportedNavigation(t Navigation) bool {
-	return !t.SupportWeb && fyne.CurrentDevice().IsBrowser()
+	return fyne.CurrentDevice().IsBrowser()
 }
 
 func SetMainWin(win *fyne.Window) {
 	mainWin = win
-	syncErrorDialog = dialog.NewInformation("Sync task warning!", "Sync task enters repeatedly, please adjust the time interval.", *mainWin)
 }
 
 func initTimeCycle() {

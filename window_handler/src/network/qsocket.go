@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 	"window_handler/common"
-	"window_handler/config"
 )
 
 const (
@@ -23,15 +22,19 @@ const (
 var AuthLock = &sync.RWMutex{}
 var AuthFlag = false
 
-var qNetCells = make(map[string]QNetCell, 8)
+var qNetCells = make(map[string]*QNetCell, 8)
 
 var NetChan = common.NewProducer()
 
 func handleConnect(conn net.Conn, isClient bool) {
 	log.Printf("client %v connected\n", conn.RemoteAddr())
 	for {
-		conn.SetReadDeadline(time.Now().Add(time.Minute * time.Duration(5)))
+		err := conn.SetReadDeadline(time.Now().Add(time.Minute * time.Duration(5)))
+		if err != nil {
+			continue
+		}
 		if msg, err := readStr(conn); err != nil {
+			time.Sleep(100 * time.Millisecond)
 			if err == io.EOF {
 				//log.Printf("client %v closed\n", conn.RemoteAddr())
 			} else {
@@ -54,7 +57,7 @@ func StartQServers() {
 	defer listener.Close()
 	for {
 		connect, err := listener.Accept()
-		remoteIp := connect.RemoteAddr().String()
+		remoteIp := getIpFromAddr(connect.RemoteAddr().String())
 		//if !checkQTargetAuth(remoteIp) {
 		//	err := connect.Close()
 		//	if err != nil {
@@ -75,7 +78,7 @@ func StartQServers() {
 		AuthLock.Lock()
 		if AuthFlag {
 			netCell := qNetCells[remoteIp]
-			netCell.qServer = &connect
+			netCell.QServer = &connect
 			qNetCells[remoteIp] = netCell
 			go handleConnect(connect, false)
 			log.Printf("qnq client connect, ip : %v ", remoteIp)
@@ -87,25 +90,16 @@ func StartQServers() {
 	}
 }
 
-func StartQTargets() {
-	for _, qnqConfig := range config.SystemConfigCache.Value().QNQNetCells {
-		if qnqConfig.Ip == "0.0.0.0" && strings.Contains(qnqConfig.Ip, "127.0.0.1") {
-			continue
-		}
-		if qNetCells[qnqConfig.Ip].qTarget != nil {
-			continue
-		}
-		ConnectTarget(qnqConfig.Ip)
-	}
-}
-
 // ConnectTarget 不允许非worker包调用network包
-func ConnectTarget(ip string) {
+func ConnectTarget(ip string) bool {
+	if strings.Contains(ip, "0.0.0.0") || strings.Contains(ip, "127.0.0.1") {
+		return false
+	}
 	var err error
 	log.Printf("try to connect remote qnq : %v\n", ip+ServerPort)
 	connect, err := net.Dial(ServerNetworkType, ip+ServerPort)
 	if err != nil {
-		return
+		return false
 	}
 	connect.SetReadDeadline(time.Now().Add(time.Second * time.Duration(30)))
 	if err != nil {
@@ -113,7 +107,10 @@ func ConnectTarget(ip string) {
 	} else {
 		log.Printf("client %v connected \n", connect.RemoteAddr())
 		netCell := qNetCells[ip]
-		netCell.qTarget = &connect
+		if netCell == nil {
+			netCell = &QNetCell{}
+		}
+		netCell.QTarget = &connect
 		qNetCells[ip] = netCell
 		_, err := WriteStrToQTarget("test", ip)
 		if err == nil {
@@ -124,12 +121,13 @@ func ConnectTarget(ip string) {
 			netCell.setTargetStatus(false)
 		}
 	}
+	return true
 }
 
 func WriteStrToQTarget(message string, targetIp string) (string, error) {
 	var err error
 	var ret string
-	_, err = write(*qNetCells[targetIp].qTarget, message)
+	_, err = write(*qNetCells[targetIp].QTarget, message)
 	if err != nil {
 		log.Printf(err.Error())
 		return "", err
@@ -144,7 +142,7 @@ func WriteStrToQTarget(message string, targetIp string) (string, error) {
 }
 
 func ReadStrFromQTarget(targetIp string) string {
-	ret, err := readStr(*qNetCells[targetIp].qTarget)
+	ret, err := readStr(*qNetCells[targetIp].QTarget)
 	if err != nil {
 		log.Printf(err.Error())
 		return ""
@@ -153,7 +151,7 @@ func ReadStrFromQTarget(targetIp string) string {
 }
 
 func ReadBytesFromQTarget(targetIp string) bytes.Buffer {
-	ret, err := readBytes(*qNetCells[targetIp].qTarget)
+	ret, err := readBytes(*qNetCells[targetIp].QTarget)
 	if err != nil {
 		log.Printf(err.Error())
 		return bytes.Buffer{}
@@ -161,6 +159,15 @@ func ReadBytesFromQTarget(targetIp string) bytes.Buffer {
 	return ret
 }
 
-func GetQNetCell(ip string) QNetCell {
-	return qNetCells[ip]
+func GetQNetCell(ip string) *QNetCell {
+	cell := qNetCells[ip]
+	if cell == nil {
+		cell = &QNetCell{}
+		qNetCells[ip] = cell
+	}
+	return cell
+}
+
+func GetAllQNetCells() map[string]*QNetCell {
+	return qNetCells
 }

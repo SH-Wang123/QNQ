@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"log"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -135,4 +136,13 @@ func CheckSum(data []byte) uint16 {
 	sum += (sum >> 16)
 
 	return uint16(^sum)
+}
+
+func getIpFromAddr(addr string) string {
+	s := strings.Split(addr, ":")
+	if len(s) == 2 {
+		return s[0]
+	} else {
+		return ""
+	}
 }

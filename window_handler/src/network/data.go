@@ -3,8 +3,8 @@ package network
 import "net"
 
 type QNetCell struct {
-	qTarget *net.Conn
-	qServer *net.Conn
+	QTarget *net.Conn
+	QServer *net.Conn
 	//target status | server status
 	status int
 }
@@ -25,11 +25,11 @@ func (qn *QNetCell) setServerStatus(status bool) {
 	}
 }
 
-func (qn *QNetCell) getTargetStatus() bool {
+func (qn *QNetCell) GetTargetStatus() bool {
 	return qn.status&10 >= 10
 }
 
-func (qn *QNetCell) getServerStatus() bool {
+func (qn *QNetCell) GetServerStatus() bool {
 	return qn.status&01 == 1
 }
 

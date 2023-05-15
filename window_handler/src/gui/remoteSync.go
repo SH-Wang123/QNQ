@@ -39,20 +39,20 @@ func getManageRemoteQNQComponent(win fyne.Window) fyne.CanvasObject {
 		itemsLen = len(config.SystemConfigCache.Cache.QNQNetCells) - 1
 		return createRemoteQNQItem(itemsLen)
 	}
-
 	tabs.SetTabLocation(container.TabLocationLeading)
-	return container.NewBorder(nil, nil, nil, nil, tabs)
+
+	return container.NewAppTabs(
+		container.NewTabItem("Target List", container.NewBorder(nil, nil, nil, nil, tabs)),
+		container.NewTabItem("Server List", getServerListTable(win)),
+	)
 }
 
 func createRemoteQNQItem(index int) *container.TabItem {
 	ipComp, ipInput := getLabelInput("IP : ", config.SystemConfigCache.Cache.QNQNetCells[index].Ip)
-	serverStatusComp := container.NewHBox(
-		widget.NewLabel("Server status : "),
-		widget.NewLabel(fmt.Sprint(config.SystemConfigCache.Cache.QNQNetCells[index].GetServerStatus())),
-	)
+	netCell := worker.GetQNetCell(config.SystemConfigCache.Cache.QNQNetCells[index].Ip)
 	targetStatusComp := container.NewHBox(
-		widget.NewLabel("Target status : "),
-		widget.NewLabel(fmt.Sprint(config.SystemConfigCache.Cache.QNQNetCells[index].GetTargetStatus())),
+		widget.NewLabel("Connect status : "),
+		widget.NewLabel(fmt.Sprint(netCell.GetTargetStatus())),
 	)
 	markComp, markInput := getLabelInput("Mark : ", config.SystemConfigCache.Cache.QNQNetCells[index].Mark)
 	saveBtn := widget.NewButton("Save", func() {
@@ -60,17 +60,32 @@ func createRemoteQNQItem(index int) *container.TabItem {
 		config.SystemConfigCache.Cache.QNQNetCells[index].Mark = markInput.Text
 		config.SystemConfigCache.NotifyAll()
 	})
-	authBtn := widget.NewButton("Auth", func() {
+	connectBtn := widget.NewButton("Connect", func() {
 		go worker.ConnectTarget(ipInput.Text)
+		waitAuthDialog.Show()
+		//go func() {
+		//	t := time.NewTicker(60 * time.Second)
+		//	select {
+		//	case <-t.C:
+		//		waitAuthDialog.Hide()
+		//		authErrorDialog.Show()
+		//	}
+		//}()
 	})
+	connectBtn.Importance = widget.HighImportance
 	comp := container.NewVBox(
+		widget.NewLabel(""),
 		ipComp,
-		serverStatusComp,
 		targetStatusComp,
 		markComp,
-		authBtn,
+		connectBtn,
 		saveBtn,
 	)
+	if netCell.GetTargetStatus() {
+		batchDisable(connectBtn)
+	} else {
+		batchEnable(connectBtn)
+	}
 	return container.NewTabItem(
 		fmt.Sprint(index+1),
 		comp,
@@ -79,7 +94,7 @@ func createRemoteQNQItem(index int) *container.TabItem {
 
 func getRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
 	rscOnce.Do(func() {
-
+		remoteSyncComponent = container.NewHBox(widget.NewLabel("wait reconsitution"))
 	})
 	return remoteSyncComponent
 }
@@ -90,4 +105,41 @@ func remoteAuthDialogFunc(b bool) {
 		common.SendSignal2GWChannel(common.SIGNAL_AUTH_NO_PASS)
 	}
 	remoteAuthShowing = false
+}
+
+func getServerListTable(_ fyne.Window) *widget.Table {
+	servers := worker.GetAllQServers()
+	rowNum := len(servers)
+	t := widget.NewTable(
+		func() (int, int) {
+			return rowNum, 3
+		},
+		func() fyne.CanvasObject {
+			return widget.NewLabel("Nothing")
+		},
+		func(id widget.TableCellID, cell fyne.CanvasObject) {
+			label := cell.(*widget.Label)
+			ids := id.Row
+			server := servers[ids]
+			s := *server
+			switch id.Col {
+			case 0:
+				if ids == 0 {
+					label.SetText("")
+				} else {
+					label.SetText(fmt.Sprintf("%d", ids))
+				}
+			case 1:
+				label.SetText(fmt.Sprint(s.RemoteAddr()))
+			case 2:
+				label.SetText(fmt.Sprint())
+			case 3:
+				label.SetText(fmt.Sprint())
+			}
+		},
+	)
+	t.SetColumnWidth(0, 130)
+	t.SetColumnWidth(1, 60)
+	t.SetColumnWidth(2, 60)
+	return t
 }
