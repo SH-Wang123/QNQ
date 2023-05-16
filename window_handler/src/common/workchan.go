@@ -8,6 +8,7 @@ import (
 )
 
 var timeoutValue = 2 * time.Minute
+var workerCache = make(map[string]*QWorker)
 
 type Producer interface {
 	//Produce Send the message to chan
@@ -109,11 +110,16 @@ func (p *QProducer) distributeMsg(msg interface{}) {
 		SN := getMsgSN(msgStr, msgTaskActivation)
 		taskFlag := msgStr[9:10]
 		if taskFlag == TaskOverFlag {
+			if workerCache[SN] != nil {
+				workerCache[SN].OverChan <- 1
+			}
+			delete(workerCache, SN)
 			go p.RemoveConsumer(SN)
 		} else {
 			taskType := msgStr[0:5]
 			worker := WorkerFactoryMap[taskType](SN)
 			worker.Status = TASK_READY
+			workerCache[SN] = worker
 			go p.AddConsumer(worker)
 		}
 		return
@@ -144,19 +150,21 @@ func (w *QWorker) Execute(v ...interface{}) {
 		return
 	}
 	qmqWaitGroup.Add(1)
-
+	defer qmqWaitGroup.Done()
+	ticker := time.NewTicker(timeoutValue)
 	for {
 		select {
 		case m := <-w.Sub:
 			log.Printf("Consumer %s receive : %v", w.SN, m)
-			w.ExecuteFunc(m, w)
-		case <-time.After(timeoutValue):
+			if m != nil {
+				w.ExecuteFunc(m, w)
+			}
+		case <-ticker.C:
 			log.Printf("Consumer %s timeout", w.SN)
-			qmqWaitGroup.Done()
 			break
-		default:
-			qmqWaitGroup.Done()
-			break
+		case <-w.OverChan:
+			log.Printf("Consumer %s over", w.SN)
+			return
 		}
 	}
 }

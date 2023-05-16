@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"log"
 	"net"
-	"strings"
 	"time"
 )
 
@@ -24,6 +23,7 @@ func readStr(conn net.Conn) (string, error) {
 	var bytebuf bytes.Buffer
 	bytearr := make([]byte, 1)
 	for {
+		conn.SetReadDeadline(time.Now().Add(time.Minute * time.Duration(5)))
 		if _, err := conn.Read(bytearr); err != nil {
 			return str, err
 		}
@@ -136,13 +136,4 @@ func CheckSum(data []byte) uint16 {
 	sum += (sum >> 16)
 
 	return uint16(^sum)
-}
-
-func getIpFromAddr(addr string) string {
-	s := strings.Split(addr, ":")
-	if len(s) == 2 {
-		return s[0]
-	} else {
-		return ""
-	}
 }

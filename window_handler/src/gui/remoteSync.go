@@ -5,6 +5,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 	"sync"
 	"window_handler/common"
@@ -20,6 +21,10 @@ var (
 var (
 	remoteSyncComponent fyne.CanvasObject
 	rscOnce             sync.Once
+)
+
+var (
+	serverListTable *widget.Table
 )
 
 func getManageRemoteQNQComponent(win fyne.Window) fyne.CanvasObject {
@@ -39,11 +44,11 @@ func getManageRemoteQNQComponent(win fyne.Window) fyne.CanvasObject {
 		itemsLen = len(config.SystemConfigCache.Cache.QNQNetCells) - 1
 		return createRemoteQNQItem(itemsLen)
 	}
-	tabs.SetTabLocation(container.TabLocationLeading)
+	tabs.SetTabLocation(container.TabLocationTrailing)
 
 	return container.NewAppTabs(
 		container.NewTabItem("Target List", container.NewBorder(nil, nil, nil, nil, tabs)),
-		container.NewTabItem("Server List", getServerListTable(win)),
+		container.NewTabItem("Server List", getServerListTable()),
 	)
 }
 
@@ -93,9 +98,42 @@ func createRemoteQNQItem(index int) *container.TabItem {
 }
 
 func getRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
-	rscOnce.Do(func() {
-		remoteSyncComponent = container.NewHBox(widget.NewLabel("wait reconsitution"))
+	targets := worker.GetAllQSorT(false)
+	targetIps := make([]string, 0)
+	for _, v := range targets {
+		target := *v
+		ip := common.GetIpFromAddr(target.RemoteAddr().String())
+		targetIps = append(targetIps, ip)
+	}
+	remoteQNQSelect := widget.NewSelect(targetIps, func(s string) {
+
 	})
+	qnqSelectComp := container.NewHBox(
+		widget.NewLabel("Select Remote QNQ : "),
+		remoteQNQSelect,
+	)
+	localPathStr := ""
+	localPathBind := getBindString(localPathStr)
+	localPath := loadValue2Label("Local Path : ", localPathBind)
+	localPathComp := container.New(layout.NewHBoxLayout(), localPath, makeOpenFileBtn("Open",
+		win,
+		localPathBind,
+		&localPathStr))
+	remotePathInput := widget.NewEntry()
+	remotePathComp := container.NewHBox(
+		widget.NewLabel("Remote Path : "),
+		remotePathInput,
+	)
+	startBtn := widget.NewButton("Start", func() {
+		go worker.RemoteSingleSyncSingleTime(localPathStr, remotePathInput.Text, remoteQNQSelect.Selected)
+	})
+
+	remoteSyncComponent = container.NewVBox(
+		qnqSelectComp,
+		localPathComp,
+		remotePathComp,
+		startBtn,
+	)
 	return remoteSyncComponent
 }
 func remoteAuthDialogFunc(b bool) {
@@ -107,12 +145,19 @@ func remoteAuthDialogFunc(b bool) {
 	remoteAuthShowing = false
 }
 
-func getServerListTable(_ fyne.Window) *widget.Table {
-	servers := worker.GetAllQServers()
-	rowNum := len(servers)
+func getServerListTable() *widget.Table {
+	servers := worker.GetAllQSorT(true)
+	tableData := make([][]string, 0)
+	tableData = append(tableData, []string{"IP", "Status"})
+	for _, server := range servers {
+		s := *server
+		data := []string{s.RemoteAddr().String(), "Connected"}
+		tableData = append(tableData, data)
+	}
+	rowNum := len(tableData)
 	t := widget.NewTable(
 		func() (int, int) {
-			return rowNum, 3
+			return rowNum, 4
 		},
 		func() fyne.CanvasObject {
 			return widget.NewLabel("Nothing")
@@ -120,26 +165,31 @@ func getServerListTable(_ fyne.Window) *widget.Table {
 		func(id widget.TableCellID, cell fyne.CanvasObject) {
 			label := cell.(*widget.Label)
 			ids := id.Row
-			server := servers[ids]
-			s := *server
 			switch id.Col {
 			case 0:
 				if ids == 0 {
-					label.SetText("")
+					label.SetText(fmt.Sprint())
 				} else {
 					label.SetText(fmt.Sprintf("%d", ids))
 				}
 			case 1:
-				label.SetText(fmt.Sprint(s.RemoteAddr()))
+				label.SetText(tableData[ids][0])
 			case 2:
-				label.SetText(fmt.Sprint())
+				label.SetText(tableData[ids][1])
 			case 3:
-				label.SetText(fmt.Sprint())
+				if ids == 0 {
+					label.SetText("Opt")
+				} else {
+					label.SetText(fmt.Sprint())
+				}
 			}
 		},
 	)
-	t.SetColumnWidth(0, 130)
-	t.SetColumnWidth(1, 60)
-	t.SetColumnWidth(2, 60)
-	return t
+	t.SetColumnWidth(0, 40)
+	t.SetColumnWidth(1, 160)
+	t.SetColumnWidth(2, 80)
+	t.SetColumnWidth(3, 60)
+	serverListTable = t
+	serverListTable.Refresh()
+	return serverListTable
 }

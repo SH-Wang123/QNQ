@@ -99,7 +99,7 @@ var (
 		"remoteSync": {
 			"Remote Single Sync",
 			"Click start button to begin sync.",
-			getRemoteSingleComponent,
+			getManageRemoteQNQComponent,
 		},
 		"manageRemoteQNQ": {
 			"Mange Remote QNQ",
@@ -108,7 +108,7 @@ var (
 		},
 		"remoteSingleSync": {
 			"Remote Single Sync",
-			"Click start button to begin sync.\nPlease test the connection first!",
+			"This is a demo!",
 			getRemoteSingleComponent,
 		},
 		"systemInfo": {

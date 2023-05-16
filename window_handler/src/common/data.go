@@ -15,7 +15,7 @@ import (
 01 | 0000 | 0000 | 00
 消息头 1| 任务序号 5| 初始化配置位图9| 冗余位11
 
-数据消息：（最大长度4096byte）
+数据消息：（最大长度1024byte）
 00       | 0000    | 00..00 | 00000000
 数据消息头 | 任务序号(SN) | 数据段 | 校验位
 
@@ -85,6 +85,7 @@ type QWorker struct {
 	Active          bool
 	Status          int
 	Sub             chan interface{}
+	OverChan        chan int
 	ExecuteFunc     func(msg interface{}, w *QWorker)
 	DeconstructFunc func(w *QWorker)
 	PrivateFile     *os.File //usually source file

@@ -57,7 +57,7 @@ func StartQServers() {
 	defer listener.Close()
 	for {
 		connect, err := listener.Accept()
-		remoteIp := getIpFromAddr(connect.RemoteAddr().String())
+		remoteIp := common.GetIpFromAddr(connect.RemoteAddr().String())
 		//if !checkQTargetAuth(remoteIp) {
 		//	err := connect.Close()
 		//	if err != nil {
@@ -77,7 +77,12 @@ func StartQServers() {
 		AuthLock.Lock()
 		AuthLock.Lock()
 		if AuthFlag {
-			netCell := qNetCells[remoteIp]
+			var netCell *QNetCell
+			if qNetCells[remoteIp] != nil {
+				netCell = qNetCells[remoteIp]
+			} else {
+				netCell = &QNetCell{}
+			}
 			netCell.QServer = &connect
 			qNetCells[remoteIp] = netCell
 			go handleConnect(connect, false)

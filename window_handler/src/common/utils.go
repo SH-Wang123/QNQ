@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -31,4 +32,13 @@ func GetNowTimeStr() string {
 	now := time.Now()
 	ret := fmt.Sprintf("%v", now.Format("2006/01/02 15:04:05"))
 	return ret
+}
+
+func GetIpFromAddr(addr string) string {
+	s := strings.Split(addr, ":")
+	if len(s) == 2 {
+		return s[0]
+	} else {
+		return ""
+	}
 }
