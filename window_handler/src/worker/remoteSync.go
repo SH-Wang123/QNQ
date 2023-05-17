@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 	"window_handler/common"
 	"window_handler/network"
 )
@@ -113,6 +114,7 @@ func sendSingleFile(s *common.QSender) {
 	_, _ = network.WriteStrToQTarget(workerSignal, remoteIp)
 	network.WriteStrToQTarget(network.LoadContent(msgPrefix, localFilePath), remoteIp)
 	buf := make([]byte, 1010)
+	log.Printf("send file start")
 	for {
 		n, err := f.Read(buf)
 		if err != nil {
@@ -125,6 +127,7 @@ func sendSingleFile(s *common.QSender) {
 		}
 		var fBytes = buf[:n]
 		_, err = network.WriteStrToQTarget(network.LoadContent(msgPrefix, string(fBytes)), remoteIp)
+		time.Sleep(2 * time.Millisecond)
 		if err != nil {
 			log.Printf("conn.Write error : %v", err.Error())
 			break

@@ -1,6 +1,7 @@
 package network
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"log"
@@ -18,55 +19,63 @@ type ICMP struct {
 	SequenceNum uint16
 }
 
-func readStr(conn net.Conn) (string, error) {
-	var str string
-	var bytebuf bytes.Buffer
-	bytearr := make([]byte, 1)
-	for {
-		conn.SetReadDeadline(time.Now().Add(time.Minute * time.Duration(5)))
-		if _, err := conn.Read(bytearr); err != nil {
-			return str, err
-		}
-		item := bytearr[0]
-		if item == MessageDelimiter {
-			break
-		}
-		bytebuf.WriteByte(item)
+// Encode 将消息编码
+func Encode(message string) ([]byte, error) {
+	// 读取消息的长度，转换成int32类型（占4个字节）
+	var length = int32(len(message))
+	var pkg = new(bytes.Buffer)
+	// 写入消息头
+	err := binary.Write(pkg, binary.LittleEndian, length)
+	if err != nil {
+		return nil, err
 	}
-	str = bytebuf.String()
-	return str, nil
+	// 写入消息实体
+	err = binary.Write(pkg, binary.LittleEndian, []byte(message))
+	if err != nil {
+		return nil, err
+	}
+	return pkg.Bytes(), nil
 }
 
-func readBytes(conn net.Conn) (bytes.Buffer, error) {
-	var bytebuf bytes.Buffer
-	var err error
-	bytearr := make([]byte, 1)
-	for {
-		if _, err := conn.Read(bytearr); err != nil {
-			return bytebuf, err
-		}
-		item := bytearr[0]
-		if item == MessageDelimiter {
-			break
-		}
-		if item == EndMessage {
-			return bytebuf, err
-		}
-		bytebuf.WriteByte(item)
+// Decode 解码消息
+func Decode(reader *bufio.Reader) (string, error) {
+	// 读取消息的长度
+	lengthByte, _ := reader.Peek(4) // 读取前4个字节的数据
+	lengthBuff := bytes.NewBuffer(lengthByte)
+	var length int32
+	err := binary.Read(lengthBuff, binary.LittleEndian, &length)
+	if err != nil {
+		return "", err
 	}
-	return bytebuf, err
+	// Buffered返回缓冲中现有的可读取的字节数。
+	if int32(reader.Buffered()) < length+4 {
+		return "", err
+	}
+
+	// 读取真正的消息数据
+	pack := make([]byte, int(4+length))
+	_, err = reader.Read(pack)
+	if err != nil {
+		return "", err
+	}
+	return string(pack[4:]), nil
 }
 
-func write(conn net.Conn, content string) (int, error) {
+func read(conn net.Conn) (string, error) {
+	reader := bufio.NewReader(conn)
+	msg, err := Decode(reader)
+	return msg, err
+}
+
+func writeStr(conn net.Conn, content string) (int, error) {
 	if conn == nil {
 		return -1, nil
 	}
-	log.Printf("send %v : %v\n", conn.RemoteAddr(), content)
-	var bytebuf bytes.Buffer
-	bytebuf.WriteString(content)
-	bytebuf.WriteByte(MessageDelimiter)
-	bytearr := bytebuf.Bytes()
-	return conn.Write(bytearr)
+	data, err := Encode(content)
+	if err != nil {
+		log.Println("write data err: %v", err)
+	}
+	return conn.Write(data)
 }
 
 func loadContentWithCheck(prefix string, msg string, checkBit string) string {

@@ -1,7 +1,6 @@
 package network
 
 import (
-	"bytes"
 	"io"
 	"log"
 	"net"
@@ -14,9 +13,8 @@ import (
 const (
 	ServerNetworkType = "tcp"
 	ServerPort        = ":9916"
-	MessageDelimiter  = '\t'
+	MessageDelimiter  = '\f'
 	RecoverMessage    = "cx00000615"
-	EndMessage        = '\n'
 )
 
 var AuthLock = &sync.RWMutex{}
@@ -33,7 +31,7 @@ func handleConnect(conn net.Conn, isClient bool) {
 		if err != nil {
 			continue
 		}
-		if msg, err := readStr(conn); err != nil {
+		if msg, err := read(conn); err != nil {
 			time.Sleep(100 * time.Millisecond)
 			if err == io.EOF {
 				//log.Printf("client %v closed\n", conn.RemoteAddr())
@@ -42,9 +40,11 @@ func handleConnect(conn net.Conn, isClient bool) {
 			}
 		} else {
 			if !isClient {
-				write(conn, RecoverMessage)
+				writeStr(conn, RecoverMessage)
 			}
-			go NetChan.Produce(msg)
+			if len(msg) > 0 {
+				go NetChan.Produce(msg)
+			}
 		}
 	}
 }
@@ -132,36 +132,12 @@ func ConnectTarget(ip string) bool {
 func WriteStrToQTarget(message string, targetIp string) (string, error) {
 	var err error
 	var ret string
-	_, err = write(*qNetCells[targetIp].QTarget, message)
+	_, err = writeStr(*qNetCells[targetIp].QTarget, message)
 	if err != nil {
 		log.Printf(err.Error())
 		return "", err
 	}
-	//ret, err = readStr(*qNetCells[targetIp].qTarget)
-	//if err != nil {
-	//	log.Printf(err.Error())
-	//} else {
-	//	log.Printf(ret)
-	//}
 	return ret, err
-}
-
-func ReadStrFromQTarget(targetIp string) string {
-	ret, err := readStr(*qNetCells[targetIp].QTarget)
-	if err != nil {
-		log.Printf(err.Error())
-		return ""
-	}
-	return ret
-}
-
-func ReadBytesFromQTarget(targetIp string) bytes.Buffer {
-	ret, err := readBytes(*qNetCells[targetIp].QTarget)
-	if err != nil {
-		log.Printf(err.Error())
-		return bytes.Buffer{}
-	}
-	return ret
 }
 
 func GetQNetCell(ip string) *QNetCell {

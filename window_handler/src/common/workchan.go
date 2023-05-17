@@ -104,9 +104,9 @@ func NewProducer() Producer {
 
 func (p *QProducer) distributeMsg(msg interface{}) {
 	msgStr := fmt.Sprintf("%v", msg)
-
+	msgHead := getMsgHeader(msgStr)
 	// Worker start flag
-	if getMsgHeader(msgStr) == "0x" {
+	if msgHead == "0x" {
 		SN := getMsgSN(msgStr, msgTaskActivation)
 		taskFlag := msgStr[9:10]
 		if taskFlag == TaskOverFlag {
@@ -126,16 +126,16 @@ func (p *QProducer) distributeMsg(msg interface{}) {
 	}
 
 	//TODO Worker init
-	if getMsgHeader(msgStr) == "01" {
+	if msgHead == "01" {
 
 		return
 	}
 
 	//Worker content
-	if getMsgHeader(msgStr) == "00" {
+	if msgHead == "00" {
 		SN := getMsgSN(msgStr, msgTaskMsg)
 		if p.sub[SN] == nil || len(msgStr)-8 <= 6 {
-			log.Printf("worker SN {%v} is nil", SN)
+			log.Printf("worker SN {%v} is nil， msg : %v", SN, msgStr)
 		} else {
 			p.sub[SN] <- msgStr[6 : len(msgStr)-8]
 		}
@@ -155,7 +155,6 @@ func (w *QWorker) Execute(v ...interface{}) {
 	for {
 		select {
 		case m := <-w.Sub:
-			log.Printf("Consumer %s receive : %v", w.SN, m)
 			if m != nil {
 				w.ExecuteFunc(m, w)
 			}
@@ -170,7 +169,10 @@ func (w *QWorker) Execute(v ...interface{}) {
 }
 
 func getMsgHeader(msg string) string {
-	return msg[0:2]
+	if len(msg) > 2 {
+		return msg[0:2]
+	}
+	return ""
 }
 
 const (
