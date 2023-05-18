@@ -4,14 +4,10 @@ import (
 	"log"
 	"runtime"
 	"window_handler/common"
-	"window_handler/network"
 )
 
 var CapacityStrMap = make(map[string]CapacityUnit)
 var osName string
-var linuxOSName = "linux"
-var windowsOSName = "windows"
-var macOSName = "mac"
 
 var gwChannelRegisterF = make(map[int]func(), 16)
 
@@ -36,7 +32,7 @@ func gcFriend() {
 }
 
 func LoadWorkerFactory() {
-	common.WorkerFactoryMap[common.GetQMQTaskPre(common.TYPE_REMOTE_SINGLE)] = NewRemoteSyncReceiver
+	common.WorkerFactoryMap[common.GetRQPTaskPre(common.TYPE_REMOTE_SINGLE)] = NewRemoteSyncReceiver
 }
 
 func watchGWChannel() {
@@ -64,11 +60,11 @@ func registerGWFunc(signal int, f func()) {
 }
 
 func authPassHandler() {
-	network.AuthLock.Unlock()
-	network.AuthFlag = true
+	common.AuthLock.Unlock()
+	common.AuthFlag = true
 }
 
 func authNoPassHandler() {
-	network.AuthLock.Unlock()
-	network.AuthFlag = false
+	common.AuthLock.Unlock()
+	common.AuthFlag = false
 }

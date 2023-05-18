@@ -35,15 +35,14 @@ type QProducer struct {
 // AddConsumer TODO Worker内存释放
 func (p *QProducer) AddConsumer(worker *QWorker) {
 	var msg chan interface{}
-	p.lock.Lock()
+	p.lock.RLock()
+	defer p.lock.RUnlock()
 	if _, ok := p.sub[worker.SN]; ok {
-		p.lock.Unlock()
 		return
 	} else {
 		msg = make(chan interface{}, 1)
 		p.sub[worker.SN] = msg
 	}
-	p.lock.Unlock()
 	worker.Sub = msg
 	//Listen current channel
 	GetCoroutinesPool().Submit(worker.Execute)
@@ -106,33 +105,38 @@ func (p *QProducer) distributeMsg(msg interface{}) {
 	msgStr := fmt.Sprintf("%v", msg)
 	msgHead := getMsgHeader(msgStr)
 	// Worker start flag
-	if msgHead == "0x" {
-		SN := getMsgSN(msgStr, msgTaskActivation)
+	if msgHead == optRQPHead {
+		SN := getMsgSN(msgStr, msgTaskOpt)
 		taskFlag := msgStr[9:10]
 		if taskFlag == TaskOverFlag {
 			if workerCache[SN] != nil {
 				workerCache[SN].OverChan <- 1
 			}
 			delete(workerCache, SN)
-			go p.RemoveConsumer(SN)
+			p.RemoveConsumer(SN)
 		} else {
 			taskType := msgStr[0:5]
 			worker := WorkerFactoryMap[taskType](SN)
-			worker.Status = TASK_READY
+			worker.Status = TASK_FREE
 			workerCache[SN] = worker
-			go p.AddConsumer(worker)
+			p.AddConsumer(worker)
 		}
 		return
 	}
 
 	//TODO Worker init
-	if msgHead == "01" {
-
+	if msgHead == initRQPHead {
+		SN := getMsgSN(msgStr, msgTaskInit)
+		if p.sub[SN] == nil {
+			log.Printf("worker SN {%v} is nil， msg : %v", SN, msgStr)
+		} else {
+			p.sub[SN] <- msgStr[6:len(msgStr)]
+		}
 		return
 	}
 
 	//Worker content
-	if msgHead == "00" {
+	if msgHead == msgRQPHead {
 		SN := getMsgSN(msgStr, msgTaskMsg)
 		if p.sub[SN] == nil || len(msgStr)-8 <= 6 {
 			log.Printf("worker SN {%v} is nil， msg : %v", SN, msgStr)
@@ -140,31 +144,6 @@ func (p *QProducer) distributeMsg(msg interface{}) {
 			p.sub[SN] <- msgStr[6 : len(msgStr)-8]
 		}
 		return
-	}
-}
-
-func (w *QWorker) Execute(v ...interface{}) {
-	defer w.Deconstruct()
-	if w.Sub == nil {
-		w.ExecuteFunc(nil, w)
-		return
-	}
-	qmqWaitGroup.Add(1)
-	defer qmqWaitGroup.Done()
-	ticker := time.NewTicker(timeoutValue)
-	for {
-		select {
-		case m := <-w.Sub:
-			if m != nil {
-				w.ExecuteFunc(m, w)
-			}
-		case <-ticker.C:
-			log.Printf("Consumer %s timeout", w.SN)
-			break
-		case <-w.OverChan:
-			log.Printf("Consumer %s over", w.SN)
-			return
-		}
 	}
 }
 
@@ -176,7 +155,7 @@ func getMsgHeader(msg string) string {
 }
 
 const (
-	msgTaskActivation = iota
+	msgTaskOpt = iota
 	msgTaskInit
 	msgTaskMsg
 	msgTaskLocal
@@ -184,10 +163,10 @@ const (
 
 func getMsgSN(msg string, msgType int) string {
 	switch msgType {
-	case msgTaskActivation:
+	case msgTaskOpt:
 		return msg[5:9]
 	case msgTaskInit:
-		return msg[5:9]
+		return msg[2:6]
 	case msgTaskMsg:
 		return msg[2:6]
 	}

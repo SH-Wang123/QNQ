@@ -10,4 +10,6 @@ func init() {
 		log.Printf("Create a new coroutines pool, size : %v", globalCoroPool.GoNum)
 	}
 	GetCoroutinesPool().StartPool()
+	go StartQServers()
+	NetChan.StartPump()
 }

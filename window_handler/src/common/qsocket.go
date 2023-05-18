@@ -1,19 +1,20 @@
-package network
+package common
 
 import (
+	"bufio"
+	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"strings"
 	"sync"
 	"time"
-	"window_handler/common"
 )
 
 const (
 	ServerNetworkType = "tcp"
 	ServerPort        = ":9916"
-	MessageDelimiter  = '\f'
 	RecoverMessage    = "cx00000615"
 )
 
@@ -22,29 +23,46 @@ var AuthFlag = false
 
 var qNetCells = make(map[string]*QNetCell, 8)
 
-var NetChan = common.NewProducer()
+var NetChan = NewProducer()
 
 func handleConnect(conn net.Conn, isClient bool) {
 	log.Printf("client %v connected\n", conn.RemoteAddr())
+	remoteIp := GetIpFromAddr(conn.RemoteAddr().String())
+	var buf [65542]byte
+	result := bytes.NewBuffer(nil)
 	for {
-		err := conn.SetReadDeadline(time.Now().Add(time.Minute * time.Duration(5)))
+		n, err := conn.Read(buf[0:])
+		result.Write(buf[0:n])
 		if err != nil {
-			continue
-		}
-		if msg, err := read(conn); err != nil {
-			time.Sleep(100 * time.Millisecond)
 			if err == io.EOF {
-				//log.Printf("client %v closed\n", conn.RemoteAddr())
+				continue
 			} else {
-				//log.Printf("read error : %v\n", err.Error())
+				fmt.Println("read err:", err)
+				break
 			}
 		} else {
-			if !isClient {
-				writeStr(conn, RecoverMessage)
+			scanner := bufio.NewScanner(result)
+			scanner.Split(packetSlitFunc)
+			for scanner.Scan() {
+				if !isClient {
+					writeToConn(&conn, []byte(RecoverMessage))
+				}
+				handlerRecMessage(string(scanner.Bytes()[6:]), remoteIp)
+				if len(string(scanner.Bytes()[6:])) > 0 {
+					NetChan.Produce(string(scanner.Bytes()[6:]))
+					break
+				}
 			}
-			if len(msg) > 0 {
-				go NetChan.Produce(msg)
-			}
+		}
+		result.Reset()
+	}
+}
+
+func handlerRecMessage(msg string, remoteIp string) {
+	if msg == RecoverMessage {
+		qSender := GetCellQSender(remoteIp)
+		if qSender != nil {
+			qSender.RecCount++
 		}
 	}
 }
@@ -57,7 +75,7 @@ func StartQServers() {
 	defer listener.Close()
 	for {
 		connect, err := listener.Accept()
-		remoteIp := common.GetIpFromAddr(connect.RemoteAddr().String())
+		remoteIp := GetIpFromAddr(connect.RemoteAddr().String())
 		//if !checkQTargetAuth(remoteIp) {
 		//	err := connect.Close()
 		//	if err != nil {
@@ -67,13 +85,13 @@ func StartQServers() {
 		if err != nil {
 			log.Fatalln(err)
 		}
-		common.CurrentWaitAuthIp = remoteIp
+		CurrentWaitAuthIp = remoteIp
 		if strings.Contains(remoteIp, "127.0.0.1") {
 			connect.Close()
 			AuthFlag = false
 			continue
 		}
-		common.SendSignal2WGChannel(common.GetRunningSignal(common.TYPE_REMOTE_QNQ_AUTH))
+		SendSignal2WGChannel(GetRunningSignal(TYPE_REMOTE_QNQ_AUTH))
 		AuthLock.Lock()
 		AuthLock.Lock()
 		if AuthFlag {
@@ -81,7 +99,9 @@ func StartQServers() {
 			if qNetCells[remoteIp] != nil {
 				netCell = qNetCells[remoteIp]
 			} else {
-				netCell = &QNetCell{}
+				netCell = &QNetCell{
+					netCellLock: &sync.RWMutex{},
+				}
 			}
 			netCell.QServer = &connect
 			qNetCells[remoteIp] = netCell
@@ -113,11 +133,13 @@ func ConnectTarget(ip string) bool {
 		log.Printf("client %v connected \n", connect.RemoteAddr())
 		netCell := qNetCells[ip]
 		if netCell == nil {
-			netCell = &QNetCell{}
+			netCell = &QNetCell{
+				netCellLock: &sync.RWMutex{},
+			}
 		}
 		netCell.QTarget = &connect
 		qNetCells[ip] = netCell
-		_, err := WriteStrToQTarget("test", ip)
+		_, err := WriteStrToQTarget([]byte("test"), ip, nil)
 		if err == nil {
 			netCell.setTargetStatus(true)
 			go handleConnect(connect, true)
@@ -129,10 +151,15 @@ func ConnectTarget(ip string) bool {
 	return true
 }
 
-func WriteStrToQTarget(message string, targetIp string) (string, error) {
+// WriteStrToQTarget 如果不由QSender发送，参数传nil
+func WriteStrToQTarget(message []byte, targetIp string, s *QSender) (string, error) {
+	if s != nil && qNetCells[targetIp] != nil && qNetCells[targetIp].currentTWorker != s {
+		log.Printf("%v want stael conn", s.SN)
+		return "", nil
+	}
 	var err error
 	var ret string
-	_, err = writeStr(*qNetCells[targetIp].QTarget, message)
+	err = writeToConn(qNetCells[targetIp].QTarget, message)
 	if err != nil {
 		log.Printf(err.Error())
 		return "", err
@@ -143,7 +170,9 @@ func WriteStrToQTarget(message string, targetIp string) (string, error) {
 func GetQNetCell(ip string) *QNetCell {
 	cell := qNetCells[ip]
 	if cell == nil {
-		cell = &QNetCell{}
+		cell = &QNetCell{
+			netCellLock: &sync.RWMutex{},
+		}
 		qNetCells[ip] = cell
 	}
 	return cell

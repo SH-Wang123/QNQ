@@ -31,7 +31,7 @@ var (
 	timingRemoteSingleTicker   *time.Ticker
 )
 
-var (
+const (
 	COMPARE_RUNNING = "[Comparing] "
 	SYNC_RUNNING    = "[Syncing] "
 	VERIFY_MD5      = "[Verify MD5] "

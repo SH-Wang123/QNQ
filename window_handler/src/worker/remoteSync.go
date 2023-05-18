@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 	"window_handler/common"
-	"window_handler/network"
 )
 
 var outputFileLock = sync.Mutex{}
@@ -32,6 +31,7 @@ func newRemoteSyncSender() *common.QSender {
 		SN:                 common.GetSNCount(),
 		Active:             false,
 		Status:             common.TASK_FREE,
+		RecCount:           1,
 		ExecuteFunc:        sendSingleFile,
 		PrivateVariableMap: make(map[string]interface{}),
 	}
@@ -64,20 +64,19 @@ func remoteSingleFileSyncReceiver(msg interface{}, w *common.QWorker) {
 	msgStr := fmt.Sprintf("%v", msg)
 
 	//Create File
-	if w.Status == common.TASK_READY {
+	if w.Status == common.TASK_FREE {
+		filePath := common.GetInitRQPMsg(msgStr)
 		var err error
-		log.Printf("RemoteSingleFileSyncReceiver : get file path %v", msgStr)
-		w.PrivateFile, err = common.OpenFile(msgStr, true)
+		log.Printf("RemoteSingleFileSyncReceiver %v: get file path %v", w.SN, filePath)
+		w.PrivateFile, err = common.OpenFile(filePath, true)
 		if err != nil {
 			return
 		}
-		w.Status = common.TASK_RUNNING
-		return
-	} else if w.Status != common.TASK_RUNNING {
-		log.Printf("%v : error opt", w.SN)
+		w.Status = common.TASK_READY
 		return
 	}
 
+	w.Status = common.TASK_RUNNING
 	//Write File
 	if len(msgStr) == 0 {
 		return
@@ -109,13 +108,19 @@ func sendSingleFile(s *common.QSender) {
 			log.Printf("close file err : %v", err.Error())
 		}
 	}(f)
+	num := 1
 	remoteIp := fmt.Sprintf("%v", s.PrivateVariableMap["remoteIp"])
-	workerSignal := common.GetQMQTaskPre(common.TYPE_REMOTE_SINGLE) + s.SN + "0"
-	_, _ = network.WriteStrToQTarget(workerSignal, remoteIp)
-	network.WriteStrToQTarget(network.LoadContent(msgPrefix, localFilePath), remoteIp)
-	buf := make([]byte, 1010)
+	workerSignal := common.GetRQPOptSignal(s.SN, common.TYPE_REMOTE_SINGLE, false, remoteIp)
+	_, _ = common.WriteStrToQTarget([]byte(workerSignal), remoteIp, nil)
+	initSignal := common.GetRQPInitSignal(s.SN, common.NULL_INIT_MAP, localFilePath)
+	common.WriteStrToQTarget([]byte(initSignal), remoteIp, nil)
+	time.Sleep(1000 * time.Millisecond)
+	buf := make([]byte, 4082)
 	log.Printf("send file start")
+	common.StealConn(remoteIp, s)
+	defer common.ReleaseConn(remoteIp, s)
 	for {
+		num++
 		n, err := f.Read(buf)
 		if err != nil {
 			if err == io.EOF {
@@ -126,15 +131,15 @@ func sendSingleFile(s *common.QSender) {
 			break
 		}
 		var fBytes = buf[:n]
-		_, err = network.WriteStrToQTarget(network.LoadContent(msgPrefix, string(fBytes)), remoteIp)
-		time.Sleep(2 * time.Millisecond)
+		_, err = common.WriteStrToQTarget([]byte(common.LoadContent(msgPrefix, common.LoadQMQMsgNum(num), string(fBytes))), remoteIp, s)
 		if err != nil {
 			log.Printf("conn.Write error : %v", err.Error())
 			break
 		}
 	}
-	workerSignal = common.GetQMQTaskPre(common.TYPE_REMOTE_SINGLE) + s.SN + "1"
-	_, _ = network.WriteStrToQTarget(workerSignal, remoteIp)
+	workerSignal = common.GetRQPOptSignal(s.SN, common.TYPE_REMOTE_SINGLE, true, remoteIp)
+	time.Sleep(30 * time.Second)
+	_, _ = common.WriteStrToQTarget([]byte(workerSignal), remoteIp, s)
 }
 
 func GetRemoteFileRootMap(ip string, abstractPath string, anchorPointPath string) map[string][]string {
@@ -161,15 +166,15 @@ func TestQnqTarget(ip string) bool {
 }
 
 func ConnectTarget(ip string) {
-	network.ConnectTarget(ip)
+	common.ConnectTarget(ip)
 }
 
-func GetQNetCell(ip string) *network.QNetCell {
-	return network.GetQNetCell(ip)
+func GetQNetCell(ip string) *common.QNetCell {
+	return common.GetQNetCell(ip)
 }
 
-func GetAllQNetCells() map[string]*network.QNetCell {
-	return network.GetAllQNetCells()
+func GetAllQNetCells() map[string]*common.QNetCell {
+	return common.GetAllQNetCells()
 }
 
 // GetAllQSorT 获取当前network缓存中的所有server或target
