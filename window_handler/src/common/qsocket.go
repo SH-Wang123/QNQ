@@ -3,8 +3,6 @@ package common
 import (
 	"bufio"
 	"bytes"
-	"fmt"
-	"io"
 	"log"
 	"net"
 	"strings"
@@ -25,7 +23,7 @@ var qNetCells = make(map[string]*QNetCell, 8)
 
 var NetChan = NewProducer()
 
-func handleConnect(conn net.Conn, isClient bool) {
+func handleConnect(conn net.Conn, isTarget bool) {
 	log.Printf("client %v connected\n", conn.RemoteAddr())
 	remoteIp := GetIpFromAddr(conn.RemoteAddr().String())
 	var buf [65542]byte
@@ -34,19 +32,18 @@ func handleConnect(conn net.Conn, isClient bool) {
 		n, err := conn.Read(buf[0:])
 		result.Write(buf[0:n])
 		if err != nil {
-			if err == io.EOF {
+			time.Sleep(1 * time.Millisecond)
+			if isTarget {
 				continue
-			} else {
-				fmt.Println("read err:", err)
-				break
 			}
+			qNetCells[remoteIp].setTargetStatus(false)
+			qNetCells[remoteIp] = nil
+			conn.Close()
+			return
 		} else {
 			scanner := bufio.NewScanner(result)
 			scanner.Split(packetSlitFunc)
 			for scanner.Scan() {
-				if !isClient {
-					writeToConn(&conn, []byte(RecoverMessage))
-				}
 				handlerRecMessage(string(scanner.Bytes()[6:]), remoteIp)
 				if len(string(scanner.Bytes()[6:])) > 0 {
 					NetChan.Produce(string(scanner.Bytes()[6:]))
@@ -83,7 +80,7 @@ func StartQServers() {
 		//	}
 		//}
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
 		}
 		CurrentWaitAuthIp = remoteIp
 		if strings.Contains(remoteIp, "127.0.0.1") {
@@ -121,7 +118,7 @@ func ConnectTarget(ip string) bool {
 		return false
 	}
 	var err error
-	log.Printf("try to connect remote qnq : %v\n", ip+ServerPort)
+	log.Printf("try to connect remote qnq : %v\n", ip)
 	connect, err := net.Dial(ServerNetworkType, ip+ServerPort)
 	if err != nil {
 		return false
@@ -149,6 +146,20 @@ func ConnectTarget(ip string) bool {
 		}
 	}
 	return true
+}
+
+func DisconnectTarget(ip string) {
+	log.Printf("try to disconnect remote qnq : %v\n", ip)
+	if qNetCells[ip] == nil || qNetCells[ip].QTarget == nil {
+		return
+	}
+	ptr := qNetCells[ip].QTarget
+	target := *ptr
+	err := target.Close()
+	if err != nil {
+		log.Printf("disconnect err, ip: %v, err : %v", ip, err)
+		return
+	}
 }
 
 // WriteStrToQTarget 如果不由QSender发送，参数传nil

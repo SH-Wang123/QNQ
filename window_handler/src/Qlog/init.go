@@ -6,18 +6,18 @@ import (
 	"os"
 )
 
-const LOG_PATH = "./QNQ_W.log"
+const logPath = "QNQ_W.log"
 
 func init() {
-	_, err := os.Stat(LOG_PATH)
+	_, err := os.Stat(logPath)
 	if err != nil {
-		filePtr, _ := os.Create(LOG_PATH)
+		filePtr, _ := os.Create(logPath)
 		defer func() {
 			filePtr.Close()
 		}()
 	}
 
-	f, err := os.OpenFile(LOG_PATH, os.O_CREATE|os.O_APPEND|os.O_RDWR, os.ModePerm)
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_RDWR, os.ModePerm)
 	if err != nil {
 		return
 	}
@@ -27,6 +27,6 @@ func init() {
 
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
-	log.Println("test")
+	log.Println("Welcome to QNQ.")
 
 }

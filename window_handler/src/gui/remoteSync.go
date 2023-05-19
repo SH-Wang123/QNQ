@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"strconv"
 	"sync"
 	"window_handler/common"
 	"window_handler/config"
@@ -19,8 +20,14 @@ var (
 )
 
 var (
-	remoteSyncComponent fyne.CanvasObject
-	rscOnce             sync.Once
+	remoteSyncComponent       *fyne.Container
+	remoteQNQSelect           *widget.Select
+	remoteSyncPolicyComponent *widget.Button
+	remoteSyncStartButton     *widget.Button
+	remoteSyncProgressBox     *fyne.Container
+	remoteSyncCurrentFile     *widget.Label
+	remoteSyncTimeRemaining   *widget.Label
+	rsOnce                    sync.Once
 )
 
 var (
@@ -44,6 +51,17 @@ func getManageRemoteQNQComponent(win fyne.Window) fyne.CanvasObject {
 		itemsLen = len(config.SystemConfigCache.Cache.QNQNetCells) - 1
 		return createRemoteQNQItem(itemsLen)
 	}
+	tabs.CloseIntercept = func(item *container.TabItem) {
+		index, _ := strconv.Atoi(item.Text)
+		if len(config.SystemConfigCache.Cache.QNQNetCells) < index {
+			return
+		}
+		index--
+		ip := config.SystemConfigCache.Cache.QNQNetCells[index].Ip
+		go config.SystemConfigCache.DeleteQNQNetCell(index)
+		go common.DisconnectTarget(ip)
+		tabs.Refresh()
+	}
 	tabs.SetTabLocation(container.TabLocationTrailing)
 
 	return container.NewAppTabs(
@@ -54,7 +72,7 @@ func getManageRemoteQNQComponent(win fyne.Window) fyne.CanvasObject {
 
 func createRemoteQNQItem(index int) *container.TabItem {
 	ipComp, ipInput := getLabelInput("IP : ", config.SystemConfigCache.Cache.QNQNetCells[index].Ip)
-	netCell := worker.GetQNetCell(config.SystemConfigCache.Cache.QNQNetCells[index].Ip)
+	netCell := common.GetQNetCell(config.SystemConfigCache.Cache.QNQNetCells[index].Ip)
 	targetStatusComp := container.NewHBox(
 		widget.NewLabel("Connect status : "),
 		widget.NewLabel(fmt.Sprint(netCell.GetTargetStatus())),
@@ -66,30 +84,29 @@ func createRemoteQNQItem(index int) *container.TabItem {
 		config.SystemConfigCache.NotifyAll()
 	})
 	connectBtn := widget.NewButton("Connect", func() {
-		go worker.ConnectTarget(ipInput.Text)
+		go common.ConnectTarget(ipInput.Text)
 		waitAuthDialog.Show()
-		//go func() {
-		//	t := time.NewTicker(60 * time.Second)
-		//	select {
-		//	case <-t.C:
-		//		waitAuthDialog.Hide()
-		//		authErrorDialog.Show()
-		//	}
-		//}()
+	})
+	disConnectBtn := widget.NewButton("Disconnect", func() {
+		go common.DisconnectTarget(ipInput.Text)
 	})
 	connectBtn.Importance = widget.HighImportance
+	disConnectBtn.Importance = widget.WarningImportance
 	comp := container.NewVBox(
 		widget.NewLabel(""),
 		ipComp,
 		targetStatusComp,
 		markComp,
 		connectBtn,
+		disConnectBtn,
 		saveBtn,
 	)
 	if netCell.GetTargetStatus() {
 		batchDisable(connectBtn)
+		batchEnable(disConnectBtn)
 	} else {
 		batchEnable(connectBtn)
+		batchDisable(disConnectBtn)
 	}
 	return container.NewTabItem(
 		fmt.Sprint(index+1),
@@ -98,43 +115,65 @@ func createRemoteQNQItem(index int) *container.TabItem {
 }
 
 func getRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
-	targets := worker.GetAllQSorT(false)
+	rsOnce.Do(func() {
+
+		localPathStr := ""
+		localPathBind := getBindString(localPathStr)
+		localPath := loadValue2Label("Local Path : ", localPathBind)
+		localPathComp := container.New(layout.NewHBoxLayout(), localPath, makeOpenFileBtn("Open",
+			win,
+			localPathBind,
+			&localPathStr))
+		remotePathInput := widget.NewEntry()
+		remotePathComp := container.NewHBox(
+			widget.NewLabel("Remote Path : "),
+			remotePathInput,
+		)
+		remoteSyncProgressBox = container.NewVBox()
+		remoteSyncPolicyComponent = getSingleSyncPolicyBtn(win, true)
+		remoteSyncStartButton = widget.NewButton("Start", func() {
+			if remoteQNQSelect.Selected == "" {
+				dialog.NewInformation("Start remote sync error", "Please add remote QNQ.", win).Show()
+				return
+			}
+			go worker.RemoteSingleSyncSingleTime(localPathStr, remotePathInput.Text, remoteQNQSelect.Selected)
+		})
+		remoteSyncCurrentFile = widget.NewLabel(NOT_RUNNING_STR)
+		currentFileComp := container.NewHBox(
+			widget.NewLabel("Current sync file:"),
+			remoteSyncCurrentFile,
+		)
+		remoteSyncTimeRemaining = widget.NewLabel(NOT_RUNNING_STR)
+		rsTimeComp := container.NewHBox(
+			widget.NewLabel("Time remaining:"),
+			remoteSyncTimeRemaining,
+		)
+		remoteSyncComponent = container.NewVBox(
+			localPathComp,
+			remotePathComp,
+			currentFileComp,
+			rsTimeComp,
+			remoteSyncProgressBox,
+			remoteSyncPolicyComponent,
+			remoteSyncStartButton,
+		)
+		remotePathComp.Hide()
+	})
+	targets := common.GetAllQSorT(false)
 	targetIps := make([]string, 0)
 	for _, v := range targets {
 		target := *v
 		ip := common.GetIpFromAddr(target.RemoteAddr().String())
 		targetIps = append(targetIps, ip)
 	}
-	remoteQNQSelect := widget.NewSelect(targetIps, func(s string) {
+	remoteQNQSelect = widget.NewSelect(targetIps, func(s string) {
 
 	})
 	qnqSelectComp := container.NewHBox(
 		widget.NewLabel("Select Remote QNQ : "),
 		remoteQNQSelect,
 	)
-	localPathStr := ""
-	localPathBind := getBindString(localPathStr)
-	localPath := loadValue2Label("Local Path : ", localPathBind)
-	localPathComp := container.New(layout.NewHBoxLayout(), localPath, makeOpenFileBtn("Open",
-		win,
-		localPathBind,
-		&localPathStr))
-	remotePathInput := widget.NewEntry()
-	remotePathComp := container.NewHBox(
-		widget.NewLabel("Remote Path : "),
-		remotePathInput,
-	)
-	startBtn := widget.NewButton("Start", func() {
-		go worker.RemoteSingleSyncSingleTime(localPathStr, remotePathInput.Text, remoteQNQSelect.Selected)
-	})
-
-	remoteSyncComponent = container.NewVBox(
-		qnqSelectComp,
-		localPathComp,
-		remotePathComp,
-		startBtn,
-	)
-	return remoteSyncComponent
+	return container.NewVBox(qnqSelectComp, remoteSyncComponent)
 }
 func remoteAuthDialogFunc(b bool) {
 	if b {
@@ -146,7 +185,7 @@ func remoteAuthDialogFunc(b bool) {
 }
 
 func getServerListTable() *widget.Table {
-	servers := worker.GetAllQSorT(true)
+	servers := common.GetAllQSorT(true)
 	tableData := make([][]string, 0)
 	tableData = append(tableData, []string{"IP", "Status"})
 	for _, server := range servers {
@@ -157,7 +196,7 @@ func getServerListTable() *widget.Table {
 	rowNum := len(tableData)
 	t := widget.NewTable(
 		func() (int, int) {
-			return rowNum, 4
+			return rowNum, 3
 		},
 		func() fyne.CanvasObject {
 			return widget.NewLabel("Nothing")
@@ -176,19 +215,12 @@ func getServerListTable() *widget.Table {
 				label.SetText(tableData[ids][0])
 			case 2:
 				label.SetText(tableData[ids][1])
-			case 3:
-				if ids == 0 {
-					label.SetText("Opt")
-				} else {
-					label.SetText(fmt.Sprint())
-				}
 			}
 		},
 	)
 	t.SetColumnWidth(0, 40)
 	t.SetColumnWidth(1, 160)
 	t.SetColumnWidth(2, 80)
-	t.SetColumnWidth(3, 60)
 	serverListTable = t
 	serverListTable.Refresh()
 	return serverListTable

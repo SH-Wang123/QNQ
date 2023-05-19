@@ -197,6 +197,9 @@ func initRegisterWGFunc() {
 	registerWGFunc(common.GetForceDoneSignal(common.TYPE_CREATE_TIMEPOINT), createTPDoneHandle)
 	//remote qnq auth
 	registerWGFunc(common.GetRunningSignal(common.TYPE_REMOTE_QNQ_AUTH), qnqAuthRunningHandle)
+	//remote single sync
+	registerWGFunc(common.GetRunningSignal(common.TYPE_REMOTE_SINGLE), remoteSyncRunningHandle)
+	registerWGFunc(common.GetForceDoneSignal(common.TYPE_REMOTE_SINGLE), remoteSyncDoneHandle)
 }
 
 func watchWGChannel() {
@@ -292,6 +295,17 @@ func qnqAuthRunningHandle() {
 		}
 	}()
 	remoteAuthDialog.Show()
+}
+
+func remoteSyncRunningHandle() {
+	batchDisable(remoteSyncPolicyComponent, remoteSyncStartButton)
+	showSyncError(common.TYPE_REMOTE_SINGLE)
+	startSyncGUI(remoteSyncProgressBox, remoteSyncCurrentFile, remoteSyncTimeRemaining, common.TYPE_REMOTE_SINGLE)
+}
+
+func remoteSyncDoneHandle() {
+	batchEnable(remoteSyncPolicyComponent, remoteSyncStartButton)
+	overSyncGUI(remoteSyncProgressBox, remoteSyncCurrentFile, remoteSyncTimeRemaining)
 }
 
 func showSyncError(busType int) {

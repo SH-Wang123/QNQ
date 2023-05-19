@@ -50,13 +50,18 @@ func (p *QProducer) AddConsumer(worker *QWorker) {
 
 // RemoveConsumer d
 func (p *QProducer) RemoveConsumer(id string) {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
 	close(p.sub[id])
 	delete(p.sub, id)
 }
 
 func (p *QProducer) Produce(data interface{}) {
+	msgHead := getMsgHeader(fmt.Sprintf("%v", data))
+	if msgHead == "0x" {
+		log.Printf("produce singale : %v", fmt.Sprintf("%v", data))
+	}
 	p.msg <- data
-	//log.Printf("send %v to mq", data)
 }
 
 func (p *QProducer) Stop() {
@@ -109,6 +114,7 @@ func (p *QProducer) distributeMsg(msg interface{}) {
 		SN := getMsgSN(msgStr, msgTaskOpt)
 		taskFlag := msgStr[9:10]
 		if taskFlag == TaskOverFlag {
+			log.Printf("get over signal : %v", msgStr)
 			if workerCache[SN] != nil {
 				workerCache[SN].OverChan <- 1
 			}

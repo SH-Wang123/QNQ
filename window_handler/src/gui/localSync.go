@@ -22,7 +22,6 @@ var (
 	localSingleStartButton         *widget.Button
 	createFileComponent            *widget.Check
 	localSingleProgressBox         *fyne.Container
-	localSinglePolicySyncBox       *fyne.Container
 	localSingleCurrentFile         *widget.Label
 	localSingleTimeRemaining       *widget.Label
 	slcOnce                        sync.Once
@@ -33,7 +32,6 @@ var (
 	localBatchSyncPolicyComponent *widget.Button
 	localBatchStartButton         *widget.Button
 	localBatchCancelButton        *widget.Button
-	localBatchPolicySyncBox       *fyne.Container
 	localBatchProgressBox         *fyne.Container
 	localBatchCurrentFile         *widget.Label
 	localBatchTimeRemaining       *widget.Label
@@ -86,7 +84,6 @@ func getSingleLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 			createFileComponent,
 		)
 		localSingleProgressBox = container.NewVBox()
-		localSinglePolicySyncBox = container.NewVBox()
 		localSingleCurrentFile = widget.NewLabel(NOT_RUNNING_STR)
 		currentFileComp := container.NewHBox(
 			widget.NewLabel("Current sync file:"),
@@ -98,8 +95,6 @@ func getSingleLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 			localSingleTimeRemaining,
 		)
 		localSingleSyncPolicyComponent = getSingleSyncPolicyBtn(win, false)
-
-		localSinglePolicySyncBox = container.NewVBox()
 		localSingleStartButton = getStartLocalSingleButton(win)
 		localSingleSyncComponent = container.NewVBox(
 			sourcePathComponent,
@@ -135,7 +130,6 @@ func getBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 		localBatchCancelButton = getCancelButton(common.TYPE_LOCAL_BATCH)
 
 		localBatchProgressBox = container.NewVBox()
-		localBatchPolicySyncBox = container.NewVBox()
 		localBatchSyncPolicyComponent = getBatchSyncPolicyBtn(win, false)
 
 		localBatchCurrentFile = widget.NewLabel(NOT_RUNNING_STR)
@@ -159,7 +153,6 @@ func getBatchLocalSyncComponent(win fyne.Window) fyne.CanvasObject {
 			localBatchSyncPolicyComponent,
 			localBatchCancelButton,
 			localBatchProgressBox,
-			localBatchPolicySyncBox,
 		)
 		localBatchSyncComponent = container.NewBorder(FileSyncComponent, nil, nil, nil)
 	})

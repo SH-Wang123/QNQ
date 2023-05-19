@@ -58,7 +58,7 @@ func GetRQPTaskPre(busType int) string {
 }
 
 func GetRQPOptSignal(sn string, busType int, overFlag bool, remoteIp string) string {
-	time.Sleep(600 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	pre := GetRQPTaskPre(busType)
 	var signal string
 	if overFlag {

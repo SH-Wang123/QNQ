@@ -155,10 +155,7 @@ func swapChecked(w *widget.Check) {
 }
 
 func getBatchSyncPolicyBtn(win fyne.Window, isRemote bool) *widget.Button {
-	if isRemote {
-		return getSyncPolicyBtn(true, false, true, win)
-	}
-	return getSyncPolicyBtn(true, false, false, win)
+	return getSyncPolicyBtn(true, isRemote, false, win)
 }
 
 func getPartitionSyncPolicyBtn(win fyne.Window) *widget.Button {
@@ -166,10 +163,7 @@ func getPartitionSyncPolicyBtn(win fyne.Window) *widget.Button {
 }
 
 func getSingleSyncPolicyBtn(win fyne.Window, isRemote bool) *widget.Button {
-	if isRemote {
-		return getSyncPolicyBtn(false, true, false, win)
-	}
-	return getSyncPolicyBtn(false, false, false, win)
+	return getSyncPolicyBtn(false, isRemote, false, win)
 }
 
 func getSyncPolicyBtn(isBatchSync bool, isRemoteSync bool, isPartitionSync bool, win fyne.Window) *widget.Button {

@@ -135,3 +135,18 @@ func packetSlitFunc(data []byte, atEOF bool) (advance int, token []byte, err err
 func GetInitRQPMsg(rqpStr string) string {
 	return rqpStr[4:]
 }
+
+// GetAllQSorT 获取当前network缓存中的所有server或target
+func GetAllQSorT(serverFlag bool) []*net.Conn {
+	cells := GetAllQNetCells()
+	rets := make([]*net.Conn, 0)
+	for _, cell := range cells {
+		if serverFlag && cell.QServer != nil {
+			rets = append(rets, cell.QServer)
+		}
+		if !serverFlag && cell.QTarget != nil {
+			rets = append(rets, cell.QTarget)
+		}
+	}
+	return rets
+}

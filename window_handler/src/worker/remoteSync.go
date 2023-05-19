@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
-	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -38,6 +36,8 @@ func newRemoteSyncSender() *common.QSender {
 }
 
 func RemoteSingleSyncSingleTime(localPath string, remotePath string, ip string) {
+	preSyncSingleTime(common.TYPE_REMOTE_SINGLE)
+	defer afterSyncSingleTime(common.TYPE_REMOTE_SINGLE)
 	sender := newRemoteSyncSender()
 	sender.PrivateVariableMap["local_file_path"] = localPath
 	sender.PrivateVariableMap["remoteIp"] = ip
@@ -81,7 +81,10 @@ func remoteSingleFileSyncReceiver(msg interface{}, w *common.QWorker) {
 	if len(msgStr) == 0 {
 		return
 	}
-	w.PrivateFile.Write([]byte(msgStr))
+	rm := msgStr[8:]
+	num := msgStr[0:8]
+	log.Printf("%v handle msg num : %v", w.SN, num)
+	w.PrivateFile.Write([]byte(rm))
 }
 
 func receiverDeconstruct(w *common.QWorker) {
@@ -92,12 +95,15 @@ func receiverDeconstruct(w *common.QWorker) {
 
 func sendSingleFile(s *common.QSender) {
 	localFilePath := fmt.Sprintf("%v", s.PrivateVariableMap["local_file_path"])
+	common.SetCurrentSyncFile(s.SN, SYNC_RUNNING, localFilePath)
 	if localFilePath == "" || localFilePath == "remoteFilePath" {
 		log.Printf("SendSingleFile QSender SN : {%v}, get a null file path", s.SN)
 		return
 	}
 	var msgPrefix = dataMsgPreFix + s.SN
 	f, err := os.Open(localFilePath)
+	fInfo, _ := f.Stat()
+	addSizeToTotalMap(s.SN, uint64(fInfo.Size()))
 	if err != nil {
 		log.Printf("Open %v err : %v", localFilePath, err.Error())
 		return
@@ -108,19 +114,28 @@ func sendSingleFile(s *common.QSender) {
 			log.Printf("close file err : %v", err.Error())
 		}
 	}(f)
-	num := 1
+	num := 0
 	remoteIp := fmt.Sprintf("%v", s.PrivateVariableMap["remoteIp"])
 	workerSignal := common.GetRQPOptSignal(s.SN, common.TYPE_REMOTE_SINGLE, false, remoteIp)
 	_, _ = common.WriteStrToQTarget([]byte(workerSignal), remoteIp, nil)
+	time.Sleep(1000 * time.Millisecond)
 	initSignal := common.GetRQPInitSignal(s.SN, common.NULL_INIT_MAP, localFilePath)
+	log.Printf("send init signal : %s", initSignal)
 	common.WriteStrToQTarget([]byte(initSignal), remoteIp, nil)
 	time.Sleep(1000 * time.Millisecond)
 	buf := make([]byte, 4082)
 	log.Printf("send file start")
 	common.StealConn(remoteIp, s)
 	defer common.ReleaseConn(remoteIp, s)
+	count := 0
 	for {
+		time.Sleep(1 * time.Millisecond)
 		num++
+		count++
+		if num%200 == 0 {
+			log.Printf("send msg num : %d, loss pck : %v, SN : %s", num, count != 200, s.SN)
+			count = 0
+		}
 		n, err := f.Read(buf)
 		if err != nil {
 			if err == io.EOF {
@@ -130,64 +145,15 @@ func sendSingleFile(s *common.QSender) {
 			}
 			break
 		}
+		addSizeToDoneMap(s.SN, uint64(n))
 		var fBytes = buf[:n]
-		_, err = common.WriteStrToQTarget([]byte(common.LoadContent(msgPrefix, common.LoadQMQMsgNum(num), string(fBytes))), remoteIp, s)
+		numStr := common.LoadQMQMsgNum(num)
+		_, err = common.WriteStrToQTarget([]byte(common.LoadContent(msgPrefix, numStr, string(fBytes))), remoteIp, s)
 		if err != nil {
 			log.Printf("conn.Write error : %v", err.Error())
 			break
 		}
 	}
 	workerSignal = common.GetRQPOptSignal(s.SN, common.TYPE_REMOTE_SINGLE, true, remoteIp)
-	time.Sleep(30 * time.Second)
 	_, _ = common.WriteStrToQTarget([]byte(workerSignal), remoteIp, s)
-}
-
-func GetRemoteFileRootMap(ip string, abstractPath string, anchorPointPath string) map[string][]string {
-	var params = make(map[string]string)
-	params["abstractPath"] = abstractPath
-	params["anchorPointPath"] = anchorPointPath
-	resp, err := sendGet(URL_HRED+ip+common.QNQ_TARGET_REST_PORT+GET_FILE_ROOT_URI, params)
-	if err != nil {
-		return nil
-	}
-	var ret = make(map[string][]string)
-	getObjFromResponse(resp, &ret)
-	return ret
-}
-
-func TestQnqTarget(ip string) bool {
-	resp, err := http.Get(URL_HRED + ip + common.QNQ_TARGET_REST_PORT + TEST_CONNECT)
-	if err != nil {
-		return false
-	}
-	var retStr string
-	getObjFromResponse(resp, &retStr)
-	return retStr == "ok"
-}
-
-func ConnectTarget(ip string) {
-	common.ConnectTarget(ip)
-}
-
-func GetQNetCell(ip string) *common.QNetCell {
-	return common.GetQNetCell(ip)
-}
-
-func GetAllQNetCells() map[string]*common.QNetCell {
-	return common.GetAllQNetCells()
-}
-
-// GetAllQSorT 获取当前network缓存中的所有server或target
-func GetAllQSorT(serverFlag bool) []*net.Conn {
-	cells := GetAllQNetCells()
-	rets := make([]*net.Conn, 0)
-	for _, cell := range cells {
-		if serverFlag && cell.QServer != nil {
-			rets = append(rets, cell.QServer)
-		}
-		if !serverFlag && cell.QTarget != nil {
-			rets = append(rets, cell.QTarget)
-		}
-	}
-	return rets
 }

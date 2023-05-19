@@ -154,10 +154,10 @@ var (
 	}
 	//设置菜单树
 	NavigationIndex = map[string][]string{
-		"":              {"localSync", "remoteSync", "snapshot", "systemInfo", "systemSetting"},
-		"localSync":     {"localBatchSync", "localSingleSync", "partitionSync"},
-		"remoteSync":    {"manageRemoteQNQ", "remoteSingleSync"},
-		"snapshot":      {"timePoint"},
+		"":           {"localSync", "remoteSync", "systemInfo", "systemSetting"},
+		"localSync":  {"localBatchSync", "localSingleSync", "partitionSync"},
+		"remoteSync": {"manageRemoteQNQ", "remoteSingleSync"},
+		//"snapshot":      {"timePoint"},
 		"systemInfo":    {"diskInfo", "testDiskSpeed"},
 		"systemSetting": {"olog"},
 	}

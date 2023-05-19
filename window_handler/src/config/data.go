@@ -120,6 +120,23 @@ func (a *cacheConfig) GetLocalSyncPolicy(isBatch bool, isPartitionSync bool) *sy
 	}
 }
 
+func (a *cacheConfig) DeleteQNQNetCell(index int) bool {
+	l := len(a.Cache.QNQNetCells)
+	if index+1 > l {
+		return false
+	}
+	defer a.NotifyAll()
+	if index == 0 {
+		a.Cache.QNQNetCells = make([]configNetCell, 0)
+		return true
+	}
+	for i := index; i < l; i++ {
+		a.Cache.QNQNetCells[i] = a.Cache.QNQNetCells[i+1]
+	}
+	a.Cache.QNQNetCells = a.Cache.QNQNetCells[:l-1]
+	return true
+}
+
 type LocalConfig struct {
 }
 
