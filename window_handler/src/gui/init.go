@@ -298,14 +298,14 @@ func qnqAuthRunningHandle() {
 }
 
 func remoteSyncRunningHandle() {
-	batchDisable(remoteSyncPolicyComponent, remoteSyncStartButton)
+	batchDisable(remoteSingleStartButton)
 	showSyncError(common.TYPE_REMOTE_SINGLE)
-	startSyncGUI(remoteSyncProgressBox, remoteSyncCurrentFile, remoteSyncTimeRemaining, common.TYPE_REMOTE_SINGLE)
+	startSyncGUI(remoteSingleProgressBox, remoteSingleCurrentFile, remoteSingleTimeRemaining, common.TYPE_REMOTE_SINGLE)
 }
 
 func remoteSyncDoneHandle() {
-	batchEnable(remoteSyncPolicyComponent, remoteSyncStartButton)
-	overSyncGUI(remoteSyncProgressBox, remoteSyncCurrentFile, remoteSyncTimeRemaining)
+	batchEnable(remoteSingleStartButton)
+	overSyncGUI(remoteSingleProgressBox, remoteSingleCurrentFile, remoteSingleTimeRemaining)
 }
 
 func showSyncError(busType int) {

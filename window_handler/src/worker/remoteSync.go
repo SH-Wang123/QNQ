@@ -24,9 +24,12 @@ func NewRemoteSyncReceiver(SN string) *common.QWorker {
 	}
 }
 
-func newRemoteSyncSender() *common.QSender {
+func newRemoteSyncSender(sn string) *common.QSender {
+	if sn == "" {
+		sn = common.GetSNCount()
+	}
 	return &common.QSender{
-		SN:                 common.GetSNCount(),
+		SN:                 sn,
 		Active:             false,
 		Status:             common.TASK_FREE,
 		RecCount:           1,
@@ -36,12 +39,19 @@ func newRemoteSyncSender() *common.QSender {
 }
 
 func RemoteSingleSyncSingleTime(localPath string, remotePath string, ip string) {
-	preSyncSingleTime(common.TYPE_REMOTE_SINGLE)
+	sn, lock, startTime := preSyncSingleTime(common.TYPE_REMOTE_SINGLE)
 	defer afterSyncSingleTime(common.TYPE_REMOTE_SINGLE)
-	sender := newRemoteSyncSender()
+	GetTotalSize(&sn, localPath, false, lock)
+	lock.Done()
+	sender := newRemoteSyncSender(sn)
 	sender.PrivateVariableMap["local_file_path"] = localPath
 	sender.PrivateVariableMap["remoteIp"] = ip
 	sender.GetExecuteFunc()(sender)
+	recordOLog(
+		common.TYPE_REMOTE_SINGLE,
+		startTime,
+		localPath,
+		localPath)
 }
 
 func NewQNQAuthReceiver(SN string) *common.QWorker {
@@ -102,8 +112,6 @@ func sendSingleFile(s *common.QSender) {
 	}
 	var msgPrefix = dataMsgPreFix + s.SN
 	f, err := os.Open(localFilePath)
-	fInfo, _ := f.Stat()
-	addSizeToTotalMap(s.SN, uint64(fInfo.Size()))
 	if err != nil {
 		log.Printf("Open %v err : %v", localFilePath, err.Error())
 		return

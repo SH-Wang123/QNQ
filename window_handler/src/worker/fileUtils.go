@@ -86,6 +86,7 @@ func CreateFile(bufferSize CapacityUnit, filePath string, fileSize CapacityUnit,
 	for count := 1; count <= countSum; count++ {
 		f.Write(content)
 	}
+	f.Sync()
 	usedTime = float64(time.Now().Sub(startTime)) / float64(time.Second)
 	if usedTime == 0 {
 		usedTime++
@@ -326,12 +327,18 @@ func GetTotalSize(sn *string, startPath string, isRoot bool, lock *sync.WaitGrou
 		}
 	}
 	f, err := common.OpenDir(startPath)
+	defer common.CloseFile(f)
 	if err != nil {
 		log.Printf("GetTotalSize err: %v", err)
 		return
 	}
 	children, _ := f.Readdir(-1)
-	common.CloseFile(f)
+	if len(children) == 0 {
+		fs, _ := f.Stat()
+		addSizeToTotalMap(*sn, uint64(fs.Size()))
+		return
+	}
+
 	for _, child := range children {
 		if child.IsDir() {
 			if isRoot {

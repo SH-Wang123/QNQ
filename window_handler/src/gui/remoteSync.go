@@ -20,14 +20,14 @@ var (
 )
 
 var (
-	remoteSyncComponent       *fyne.Container
-	remoteQNQSelect           *widget.Select
-	remoteSyncPolicyComponent *widget.Button
-	remoteSyncStartButton     *widget.Button
-	remoteSyncProgressBox     *fyne.Container
-	remoteSyncCurrentFile     *widget.Label
-	remoteSyncTimeRemaining   *widget.Label
-	rsOnce                    sync.Once
+	remoteSingleComponent       *fyne.Container
+	remoteQNQSelect             *widget.Select
+	remoteSinglePolicyComponent *widget.Button
+	remoteSingleStartButton     *widget.Button
+	remoteSingleProgressBox     *fyne.Container
+	remoteSingleCurrentFile     *widget.Label
+	remoteSingleTimeRemaining   *widget.Label
+	rsOnce                      sync.Once
 )
 
 var (
@@ -129,35 +129,37 @@ func getRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
 			widget.NewLabel("Remote Path : "),
 			remotePathInput,
 		)
-		remoteSyncProgressBox = container.NewVBox()
-		remoteSyncPolicyComponent = getSingleSyncPolicyBtn(win, true)
-		remoteSyncStartButton = widget.NewButton("Start", func() {
+		remoteSingleProgressBox = container.NewVBox()
+		remoteSinglePolicyComponent = getSingleSyncPolicyBtn(win, true)
+		remoteSingleStartButton = widget.NewButton("Start", func() {
 			if remoteQNQSelect.Selected == "" {
 				dialog.NewInformation("Start remote sync error", "Please add remote QNQ.", win).Show()
 				return
 			}
 			go worker.RemoteSingleSyncSingleTime(localPathStr, remotePathInput.Text, remoteQNQSelect.Selected)
 		})
-		remoteSyncCurrentFile = widget.NewLabel(NOT_RUNNING_STR)
+		remoteSingleStartButton.Importance = widget.HighImportance
+		remoteSingleCurrentFile = widget.NewLabel(NOT_RUNNING_STR)
 		currentFileComp := container.NewHBox(
 			widget.NewLabel("Current sync file:"),
-			remoteSyncCurrentFile,
+			remoteSingleCurrentFile,
 		)
-		remoteSyncTimeRemaining = widget.NewLabel(NOT_RUNNING_STR)
+		remoteSingleTimeRemaining = widget.NewLabel(NOT_RUNNING_STR)
 		rsTimeComp := container.NewHBox(
 			widget.NewLabel("Time remaining:"),
-			remoteSyncTimeRemaining,
+			remoteSingleTimeRemaining,
 		)
-		remoteSyncComponent = container.NewVBox(
+		remoteSingleComponent = container.NewVBox(
 			localPathComp,
 			remotePathComp,
 			currentFileComp,
 			rsTimeComp,
-			remoteSyncProgressBox,
-			remoteSyncPolicyComponent,
-			remoteSyncStartButton,
+			remoteSingleProgressBox,
+			remoteSinglePolicyComponent,
+			remoteSingleStartButton,
 		)
 		remotePathComp.Hide()
+		remoteSinglePolicyComponent.Hide()
 	})
 	targets := common.GetAllQSorT(false)
 	targetIps := make([]string, 0)
@@ -173,7 +175,7 @@ func getRemoteSingleComponent(win fyne.Window) fyne.CanvasObject {
 		widget.NewLabel("Select Remote QNQ : "),
 		remoteQNQSelect,
 	)
-	return container.NewVBox(qnqSelectComp, remoteSyncComponent)
+	return container.NewVBox(qnqSelectComp, remoteSingleComponent)
 }
 func remoteAuthDialogFunc(b bool) {
 	if b {
