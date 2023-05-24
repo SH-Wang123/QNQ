@@ -60,7 +60,7 @@
 #### 远程单文件同步
 在有可使用的远程QNQ时，选择目标QNQ的IP以及本地路径，点击开始按钮后，将会把本地文件同步至对端的相同路径下。（0.0.5版本将实现选择对端路径的功能，目前这里体验很差）
 如选择了E:/test.txt，请确保对端存在E这个盘符。
-![image](https://github.com/wangshenghao1/QNQ/blob/main/instructed/img/remote_auth_success.PNG)
+![image](https://github.com/wangshenghao1/QNQ/blob/main/instructed/img/remote_syncing.PNG)
 ### 系统信息
 #### 磁盘信息
 ![image](https://github.com/wangshenghao1/QNQ/blob/main/instructed/img/disk_info.PNG)
