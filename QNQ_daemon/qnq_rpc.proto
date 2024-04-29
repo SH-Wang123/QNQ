@@ -1,0 +1,146 @@
+syntax = "proto3";
+option go_package = "./;QNQ";
+option java_package = "./";
+
+message IpAgent {
+  string ip = 1;
+  string lastJumpIp = 2;
+}
+
+// Local sync func
+service LocalSync {
+  rpc SingleSync(LocalSyncRequest)
+      returns (Result) {}
+
+  rpc BatchSync(LocalSyncRequest)
+      returns (Result) {}
+
+  rpc PartitionSync(LocalSyncRequest)
+      returns (Result) {}
+}
+
+message LocalSyncRequest {
+  string targetAddr = 1;
+  string source = 2;
+  string target = 3;
+  string level = 4;
+}
+
+message Result {
+  uint32 taskId = 1;
+  int64 code = 2;
+  string message = 3;
+}
+
+// Remote sync func
+service RemoteSync {
+  rpc AddTarget(RemoteTargetRequest)
+      returns (Result) {}
+  rpc DeleteTarget(RemoteTargetRequest)
+      returns (Result) {}
+  rpc GetFileInfo(GetRemoteFileInfoRequest)
+      returns (FileInfoResult) {}
+  rpc InputSync(RemoteSyncRequest)
+      returns (Result) {}
+  rpc OutputSync(RemoteSyncRequest)
+      returns (Result) {}
+}
+
+message RemoteTargetRequest{
+  string targetAddr = 1;
+  string ip = 2;
+  uint32 port = 3;
+}
+
+message GetRemoteFileInfoRequest{
+  string targetAddr = 1;
+  string path = 2;
+}
+
+message RemoteSyncRequest{
+  string ip = 1;
+  string port = 2;
+  string source = 3;
+  string target = 4;
+}
+
+message FileInfoResult {
+  Result result = 1;
+  message FileInfo {
+    string name = 1;
+    bool isDir = 2;
+    uint64 size = 3;
+    uint32 prem = 4;
+    string modifyDate = 5;
+  }
+  int64 len = 2;
+  repeated FileInfo fileInfos = 3;
+}
+
+// Task center func
+service TaskCenter{
+  rpc GetTaskInfo(GetTaskRequest)
+      returns (TaskInfoResult ){}
+
+}
+
+message GetTaskRequest{
+  string targetAddr = 1;
+  uint32 taskId = 2;
+}
+
+message TaskInfoResult {
+  Result result = 1;
+  uint32 status = 2;
+  double progress = 3;
+  uint64 totalSize = 4;
+}
+
+// Probe
+service SysProbe {
+  // 获取系统信息
+  rpc GetSysInfo(GetSysInfoRequest)
+      returns (SysInfoResult){}
+  // 获取性能探针
+  rpc GetPerfProbe(GetPerfProbeRequest)
+      returns (PerfProbeResult){}
+}
+
+message GetSysInfoRequest{
+  string targetAddr = 1;
+}
+
+message SysInfoResult {
+  Result result = 1;
+  message partitionStat {
+    string device = 1;
+    string mountPoint = 2;
+    string opts = 3;
+    string fsType = 4;
+    uint64 total = 5;
+    uint64 free = 6;
+    double usedPercent = 7;
+  }
+  string qnqVersion = 2;
+  int64 funcBitMap = 3;
+  string hostOs = 4;
+  string hostArch = 5;
+  repeated partitionStat partitionStats = 6;
+}
+
+message GetPerfProbeRequest{
+  string targetAddr = 1;
+  string diskAnchorPoint = 2;
+  bool getNetSpeed = 3;
+}
+
+message PerfProbeResult{
+  Result result = 1;
+  uint32 diskSpeed = 2;
+  uint32 netSpeed = 3;
+}
+
+service EventCenter {
+
+}
+
